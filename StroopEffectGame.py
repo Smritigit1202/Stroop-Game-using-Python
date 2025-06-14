@@ -1,267 +1,257 @@
-#STROOP EFFECT GAME
-#made using pygame and python 3.4.1
-import highScoreModule
-import pygame 
+# STROOP EFFECT GAME - Bilingual Edition
+# Made using pygame and Python 3.x
+
+import pygame
 import random
-pygame.init() #initialises the pygame modules
+
+pygame.init()
 screen = pygame.display.set_mode((600, 600))
-#slightly transparent background of menu screen
 background = pygame.Surface(screen.get_size())
-#puts the title: "stroop effect game" in the window title
 pygame.display.set_caption("Stroop Effect Game")
 
-class button():
-    """Class used for the two menu buttons"""
-    
-    def __init__(self,screen,left,top,width,height,name):
+# Language definitions
+languages = {
+    "English": [
+        ("Red", (255, 0, 0)),
+        ("Green", (0, 255, 0)),
+        ("Blue", (0, 0, 255)),
+        ("Yellow", (255, 255, 0)),
+        ("Pink", (255, 20, 147)),
+        ("Purple", (128, 0, 128))
+    ],
+    "Hindi": [
+        ("लाल", (255, 0, 0)),
+        ("हरा", (0, 255, 0)),
+        ("नीला", (0, 0, 255)),
+        ("पीला", (255, 255, 0)),
+        ("गुलाबी", (255, 20, 147)),
+        ("बैंगनी", (128, 0, 128))
+    ]
+}
+
+user_results = {}
+
+def convert_to_hindi_numerals(number):
+    hindi_digits = {
+        '0': '०', '1': '१', '2': '२', '3': '३', '4': '४',
+        '5': '५', '6': '६', '7': '७', '8': '८', '9': '९'
+    }
+    return ''.join(hindi_digits[digit] for digit in str(number))
+
+def get_font(language=None, size=50):
+    if language == "Hindi":
+        return pygame.font.Font("Mangal.ttf", size)
+    return pygame.font.SysFont("arial", size)
+
+class Button:
+    def __init__(self, screen, left, top, width, height, name):
         self.label = name
-        #main menu colour scheme has red buttons
-        self.buttonColour = (255,0,0)
-        self.buttonRect = pygame.Rect(left,top,width,height)
+        self.buttonColour = (255, 0, 0)
+        self.buttonRect = pygame.Rect(left, top, width, height)
         self.buttonSurface = pygame.Surface(self.buttonRect.size)
 
-    def drawButton(self,screen):
-        """Draws a button for the menu"""
+    def drawButton(self, screen):
         self.buttonSurface.fill(self.buttonColour)
         self.buttonSurface.convert()
-        #ensures the surface is drawn in the same postion as the rect
-        screen.blit(self.buttonSurface, (self.buttonRect.x,self.buttonRect.y))
-        pygame.draw.rect(self.buttonSurface,self.buttonColour, self.buttonRect,1)
+        screen.blit(self.buttonSurface, (self.buttonRect.x, self.buttonRect.y))
+        pygame.draw.rect(self.buttonSurface, self.buttonColour, self.buttonRect, 1)
         self.drawText(screen)
 
     def drawText(self, screen):
-        """Writes the buttons name on the button surface"""
-        #text font is in ariel size 50
-        buttonTextFont = pygame.font.SysFont("ariel", 50)
-        #dark blue is used for the button font
-        buttonText = buttonTextFont.render(self.label,True,(0,55,90),self.buttonColour)
+        buttonTextFont = get_font("English", 50)  # fixed: defaulting to English
+        buttonText = buttonTextFont.render(self.label, True, (0, 55, 90), self.buttonColour)
         buttonText = buttonText.convert()
-        screen.blit(buttonText,self.buttonRect)        
+        screen.blit(buttonText, self.buttonRect)
 
-class colouredWord():
-    """class used for the coloured words that get displayed on the
-    screen during the gameplay"""
+class ColouredWord:
+    def __init__(self, fontColour, word, language):
+        wordFont = get_font(language, 72)
+        self.theColourText = wordFont.render(word, True, fontColour)
+        self.position = [random.randrange(40, 420), random.randrange(40, 440)]
 
-    def __init__(self,fontColour, word):    
-        wordFont = pygame.font.SysFont("ariel",72) #font for the colour word text    
-        self.theColourText = wordFont.render(word,True,fontColour)
-        #position of word is determined randomly
-        self.position = [random.randrange(40,420),random.randrange(40,440)]
-
-    def drawWord(self,screen):
+    def drawWord(self, screen):
         screen.blit(self.theColourText, self.position)
 
-    def moveWord(self, screen, vector, backgroundColour):    
-        wordClearSurface = pygame.Surface(self.theColourText.get_size())
-        wordClearSurface.fill((backgroundColour))
-        screen.blit(wordClearSurface, self.position)
+    def moveWord(self, screen, vector, backgroundColour):
+     wordClearSurface = pygame.Surface(self.theColourText.get_size(), pygame.SRCALPHA)
+     wordClearSurface.fill(backgroundColour)
+     screen.blit(wordClearSurface, self.position)
 
-        if not(0 < self.position[0] < 420):
-            vector[0] = -1*vector[0]    
-        if not(40 < self.position[1] < 440):
-            vector[1] = -1*vector[1]
-                    
-        self.position[0] += vector[0]
-        self.position[1] += vector[1]
-        screen.blit(self.theColourText, self.position)
+     word_width, word_height = self.theColourText.get_size()
 
-def drawMenu(screen, background, playButton, highScoreButton):
-    """draws the background and main menu buttons to the screen"""
-    #makes the background green
-    background.fill((153,255,153))
+    # Screen boundaries
+     min_x = 0
+     max_x = 600 - word_width
+     min_y = 0
+     max_y = 500 - word_height  # Limit to 500px to stay above buttons
+
+    # Bounce off walls
+     if self.position[0] <= min_x or self.position[0] >= max_x:
+        vector[0] *= -1
+     if self.position[1] <= min_y or self.position[1] >= max_y:
+        vector[1] *= -1
+
+    # Update position
+     self.position[0] = max(min_x, min(max_x, self.position[0] + vector[0]))
+     self.position[1] = max(min_y, min(max_y, self.position[1] + vector[1]))
+
+     screen.blit(self.theColourText, self.position)
+
+def drawMenu(screen, background, playEnglishBtn, playHindiBtn, resultsBtn):
+    background.fill((153, 255, 153))
     background = background.convert()
-    screen.blit(background, (0,0))
-    #draws the menu buttons
-    playButton.drawButton(screen)
-    highScoreButton.drawButton(screen)
-
-    #draws the title: stroop effect
-    titleFont = pygame.font.SysFont("impact",60)
-    titleText = titleFont.render("Stroop Effect game", True, (75,0,130))
-    titleText.convert()
-    screen.blit(titleText, (60,50))
-    
-    #draws the instruction text
-    instructionFont = pygame.font.SysFont("verdana",32)
-    instructionText = instructionFont.render("Made by Smriti Aggarwal",True, (220,20,60))
-    instructionText.convert()
-    screen.blit(instructionText, (100,450))
+    screen.blit(background, (0, 0))
+    playEnglishBtn.drawButton(screen)
+    playHindiBtn.drawButton(screen)
+    resultsBtn.drawButton(screen)
+    titleFont = get_font("English", 60)
+    titleText = titleFont.render("Stroop Effect Game", True, (75, 0, 130))
+    screen.blit(titleText, (60, 50))
+    instructionFont = get_font("English", 32)
+    instructionText = instructionFont.render("Made by Smriti Aggarwal", True, (220, 20, 60))
+    screen.blit(instructionText, (100, 450))
     pygame.display.update()
 
-def playGame():
-    """the main gameplay loop, draws colours to the screen in different
-    font colours and detects when the player clicks the correct button,
-    then increments thier score by one"""
-    #background used to clear screen of existing words
-    gameBackground = pygame.Surface((600,500))
-    gameBackground.fill((255,255,255))
-    gameBackground.convert()
-    
-    #the colours six colours that will be used and thier corresponding RGB values
-    colours = (("Red",(255,0,0)),("Green",(0,255,0)),("Blue",(0,0,255)),
-               ("Yellow",(255,255,0)),("Pink",(255,20,147)),("Purple",(128,0,128)))
-    
-    colourButtonRects = [] #rects to detect the user's click
-    drawGameButtons(colourButtonRects, colours) #draws the buttons for the users answer 
-    userScore = 0 #stores the users score
-    timer = 0.0 #stores the time that the user has been playing
-    timelimit = 30 #time limit the user has to score as many as possible
-    FPS = 40 #Framerate in Frames per second
-    
-    while timer<timelimit:
-        #updates the clock
-        clock = pygame.time.Clock()
-        milliseconds = clock.tick(FPS)
-        timer += milliseconds /1000
-        isMoving = False
-        
-        fontColourIndex = random.randrange(0,6)
-        fontColour = colours[fontColourIndex][1]
-        word = colours[random.randrange(0,6)][0]
+def drawGameButtons(buttonRects, colours, language):
+    buttonColour = (250, 235, 215)
+    buttons = []
+    for i in range(len(colours)):
+        if i <= 2:
+            buttonRects.append(pygame.Rect(i * 200, 500, 200, 50))
+        else:
+            buttonRects.append(pygame.Rect((i - 3) * 200, 550, 200, 50))
+        buttons.append(pygame.Surface(buttonRects[i].size))
+        buttons[i].fill(buttonColour)
+        buttons[i].convert()
+        screen.blit(buttons[i], (buttonRects[i].x, buttonRects[i].y))
+        pygame.draw.rect(buttons[i], buttonColour, buttonRects[i], 30)
+        buttonFont = get_font(language, 36)
+        buttonText = buttonFont.render(colours[i][0], True, (0, 55, 90, 0))
+        buttonText = buttonText.convert_alpha()
+        screen.blit(buttonText, (buttonRects[i].x + 20, buttonRects[i].y + 5))
 
-        theColouredWord = colouredWord(fontColour, word)
-        
+def displayHeaderInfo(text, position, colour, language):
+    Font = get_font(language, 50)
+
+    if language == "Hindi":
+        if "Score" in text:
+            value = ''.join(filter(str.isdigit, text))
+            text = "स्कोर: " + convert_to_hindi_numerals(value)
+        elif "Timer" in text:
+            value = ''.join(filter(str.isdigit, text))
+            text = "समय: " + convert_to_hindi_numerals(value)
+
+    Text = Font.render(text, True, (0, 0, 0), (255, 255, 255))
+    screen.blit(Text, (600 - (200 * position), 0))
+
+
+    
+def playGame(language):
+    gameBackground = pygame.Surface((600, 500))
+    gameBackground.fill((255, 255, 255))
+    gameBackground.convert()
+
+    colours = languages[language]
+    colourButtonRects = []
+    drawGameButtons(colourButtonRects, colours, language)
+
+    userScore = 0
+    timer = 0.0
+    timelimit = 30
+    FPS = 40
+    clock = pygame.time.Clock()
+
+    while timer < timelimit:
+        milliseconds = clock.tick(FPS)
+        timer += milliseconds / 1000
+        isMoving = False
+        fontColourIndex = random.randrange(0, 6)
+        fontColour = colours[fontColourIndex][1]
+        word = colours[random.randrange(0, 6)][0]
+        theColouredWord = ColouredWord(fontColour, word, language)
+
         if userScore >= 5:
-            #draw coloured background if the user's scores above 5
-            backGroundColourIndex = random.randrange(0,6)
-            
+            backGroundColourIndex = random.randrange(0, 6)
             while backGroundColourIndex == fontColourIndex:
-                backGroundColourIndex = random.randrange(0,6)
+                backGroundColourIndex = random.randrange(0, 6)
             backgroundColour = colours[backGroundColourIndex][1]
             gameBackground.fill(backgroundColour)
+
         if userScore >= 10:
             isMoving = True
-            movementVector = [random.randrange(-5,5),random.randrange(-5,5)]
-    
-        #screen is cleared before new word is written to screen
-        screen.blit(gameBackground, (0,0))
-        #displays the score to the top of the screen
-        displayHeaderInfo("Score: " + str(userScore), 1, (255,255,0))
-        #displays the word in its generated position
+            movementVector = [random.randrange(-5, 5), random.randrange(-5, 5)]
+
+        screen.blit(gameBackground, (0, 0))
+        displayHeaderInfo("Score: " + str(userScore), 1, (255, 255, 0), language)
         theColouredWord.drawWord(screen)
         pygame.display.update()
 
-        #while loop runs until the user has clicked the correct button
         userClicked = False
-        while userClicked ==False and timer<timelimit:
-
-            if isMoving == True:
-                theColouredWord.moveWord(screen,movementVector, backgroundColour)
-
-            #updates the clock
+        while not userClicked and timer < timelimit:
+            if isMoving:
+                theColouredWord.moveWord(screen, movementVector, backgroundColour)
             milliseconds = clock.tick(FPS)
-            timer += milliseconds /1000
-            #displays updated clock at the top of the screen
-            displayHeaderInfo("Timer: " + str(round(timer)), 2, (255,0,0))
-            
+            timer += milliseconds / 1000
+            displayHeaderInfo("Timer: " + str(round(timer)), 2, (255, 0, 0), language)
             pygame.display.update()
-                            
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    #program closes when player closes window
                     pygame.quit()
                     quit()
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     for i in range(len(colourButtonRects)):
-                        #when mouse button is pressed, the cursor posistion is
-                        #checked to see if its over the correct button
-                        if (colourButtonRects[i].collidepoint(pygame.mouse.get_pos())
-                            and i == fontColourIndex):
+                        if colourButtonRects[i].collidepoint(pygame.mouse.get_pos()) and i == fontColourIndex:
                             userClicked = True
-                            userScore +=1
-                            screen.blit(gameBackground, (0,0))
-    gameBackground.fill((255,255,255))
-    screen.blit(gameBackground,(0,0))
+                            userScore += 1
+                            screen.blit(gameBackground, (0, 0))
 
-    highScoreModule.updateHighScores(userScore, screen)
-    #drawMenu(playButtonRect, highScoreButtonRect, screen, background)
-                                      
-def drawGameButtons(buttonRects, colours):
-    """draws the game buttons to the bottom of the screen and creates rects
-    around them, and displays colour (in words) on the button"""
-    buttonColour = (250,235,215)
-    buttons = list()
-    #steps through and creates six buttons to the buttom of the screen
-    for i in range(len(colours)):
-        if i <=2:
-            #puts the first three buttons on the top row
-            buttonRects.append(pygame.Rect(i*200,500,200,50))
-        else:
-            #puts the second three buttons on the bottom row
-            buttonRects.append(pygame.Rect((i-3)*200,550,200,50))
-        #all buttons are the same size
-        buttons.append(pygame.Surface(buttonRects[i].size))
-        #all buttons are the same colour
-        buttons[i].fill(buttonColour)
-        buttons[i].convert
-        #the surfaces are drawn in the same position the rects are in
-        screen.blit(buttons[i],(buttonRects[i].x,buttonRects[i].y))
-        pygame.draw.rect(buttons[i],buttonColour,buttonRects[i],30)
+    screen.blit(gameBackground, (0, 0))
+    pygame.display.update()
+    user_results[language] = userScore
 
-        buttonFont = pygame.font.SysFont("ariel", 50)
-        #the relevant colour word is put in the rects
-        buttonText = buttonFont.render(colours[i][0],True,(0,55,90,0))
-        buttonText = buttonText.convert_alpha()
-        screen.blit(buttonText,(buttonRects[i].x+50,buttonRects[i].y+5))
-        
-def displayHeaderInfo(text, position, colour):
-    """puts the score and time remaining at the top of the screen"""
-    Font = pygame.font.SysFont("ariel", 50)
-    Text = Font.render(text,True,(0,0,0),(255,255,255))
-    Text = Text.convert()
-    screen.blit(Text,(600-(200*position),0))
+def displayResults():
+    background.fill((255, 255, 255))
+    screen.blit(background, (0, 0))
+    font = get_font("English", 40)
 
-playButton= button(screen,200,200,200,50,"       Play")
-highScoreButton = button(screen,200,300,200,50," High Score")
+    y = 100
+    for lang in user_results:
+        resultText = font.render(f"{lang} Score: {user_results[lang]}", True, (0, 0, 0))
+        screen.blit(resultText, (100, y))
+        y += 60
 
-drawMenu(screen, background, playButton, highScoreButton)    
+    if "English" in user_results and "Hindi" in user_results:
+        diff = user_results["English"] - user_results["Hindi"]
+        feedback = "You performed better in English" if diff > 0 else "You performed better in Hindi" if diff < 0 else "Equal performance"
+        analysisText = font.render(feedback, True, (255, 0, 0))
+        screen.blit(analysisText, (100, y))
 
+    pygame.display.update()
+    pygame.time.wait(5000)
+
+# Setup buttons
+playEnglishBtn = Button(screen, 200, 180, 200, 50, "Play English")
+playHindiBtn = Button(screen, 200, 260, 200, 50, "Play Hindi")
+resultsBtn = Button(screen, 200, 340, 200, 50, "Compare Results")
+
+drawMenu(screen, background, playEnglishBtn, playHindiBtn, resultsBtn)
+
+# Main loop
 menuloop = True
 while menuloop:
-    #event getter for the menu
     for event in pygame.event.get():
-        
         if event.type == pygame.QUIT:
-            #closes the program when the user clicks the close window button
             menuloop = False
         elif event.type == pygame.MOUSEBUTTONUP:
-            if playButton.buttonRect.collidepoint(pygame.mouse.get_pos()):
-                #allows the user to play the game when the mouse 
-                #button is released over the play button
-                playGame()
-                #re draws the menu when the user has finished playing the game
-                drawMenu(screen,background, playButton, highScoreButton)
-            elif highScoreButton.buttonRect.collidepoint(pygame.mouse.get_pos()):
-                #displays the highscores when the mouse button 
-                #is released over the high score button
-                highScoreModule.displayHighScores(screen,background)
-                #re draws the menu when the user has
-                #finished looking at the high scores
-                drawMenu(screen,background, playButton, highScoreButton)
+            if playEnglishBtn.buttonRect.collidepoint(pygame.mouse.get_pos()):
+                playGame("English")
+                drawMenu(screen, background, playEnglishBtn, playHindiBtn, resultsBtn)
+            elif playHindiBtn.buttonRect.collidepoint(pygame.mouse.get_pos()):
+                playGame("Hindi")
+                drawMenu(screen, background, playEnglishBtn, playHindiBtn, resultsBtn)
+            elif resultsBtn.buttonRect.collidepoint(pygame.mouse.get_pos()):
+                displayResults()
+                drawMenu(screen, background, playEnglishBtn, playHindiBtn, resultsBtn)
 
-        #changes the colour of the button when 
-        #the mouse button is down and over the button
-        elif playButton.buttonRect.collidepoint(pygame.mouse.get_pos()):
-            
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                
-                playButton.buttonColour = (255,255,0)
-            else:
-                playButton.buttonColour = (255,165,0)
-            playButton.drawButton(screen)
-            pygame.display.update()
-            
-        elif highScoreButton.buttonRect.collidepoint(pygame.mouse.get_pos()):
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                highScoreButton.buttonColour = (255,255,0)
-            else:
-                highScoreButton.buttonColour = (255,165,0)
-            highScoreButton.drawButton(screen)
-            pygame.display.update()
-        else:
-            playButton.buttonColour = (255,0,0)
-            playButton.drawButton(screen)
-            highScoreButton.buttonColour = (255,0,0)
-            highScoreButton.drawButton(screen)
-            pygame.display.update()
 pygame.quit()

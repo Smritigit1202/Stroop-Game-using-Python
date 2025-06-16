@@ -1,257 +1,332 @@
-# STROOP EFFECT GAME - Bilingual Edition
-# Made using pygame and Python 3.x
-
 import pygame
 import random
+import cv2
+import mediapipe as mp
+import threading
+import time
 
+# Initialize pygame
 pygame.init()
-screen = pygame.display.set_mode((600, 600))
-background = pygame.Surface(screen.get_size())
-pygame.display.set_caption("Stroop Effect Game")
+screen = pygame.display.set_mode((800, 600))
+pygame.display.set_caption("Stroop Effect Game - Gesture Controlled")
+clock = pygame.time.Clock()
 
-# Language definitions
-languages = {
-    "English": [
-        ("Red", (255, 0, 0)),
-        ("Green", (0, 255, 0)),
-        ("Blue", (0, 0, 255)),
-        ("Yellow", (255, 255, 0)),
-        ("Pink", (255, 20, 147)),
-        ("Purple", (128, 0, 128))
-    ],
-    "Hindi": [
-        ("लाल", (255, 0, 0)),
-        ("हरा", (0, 255, 0)),
-        ("नीला", (0, 0, 255)),
-        ("पीला", (255, 255, 0)),
-        ("गुलाबी", (255, 20, 147)),
-        ("बैंगनी", (128, 0, 128))
-    ]
-}
+# Game color setup
+colors = [
+    ("Red", (255, 0, 0)), 
+    ("Green", (0, 255, 0)), 
+    ("Blue", (0, 0, 255)),
+    ("Yellow", (255, 255, 0)), 
+    ("Pink", (255, 20, 147))
+]
 
-user_results = {}
+# Fonts
+font_large = pygame.font.SysFont("arial", 60)
+font_medium = pygame.font.SysFont("arial", 36)
+font_small = pygame.font.SysFont("arial", 24)
 
-def convert_to_hindi_numerals(number):
-    hindi_digits = {
-        '0': '०', '1': '१', '2': '२', '3': '३', '4': '४',
-        '5': '५', '6': '६', '7': '७', '8': '८', '9': '९'
-    }
-    return ''.join(hindi_digits[digit] for digit in str(number))
+# MediaPipe Gesture Setup
+mp_hands = mp.solutions.hands
+hands = mp_hands.Hands(
+    static_image_mode=False,
+    max_num_hands=1,
+    min_detection_confidence=0.7,
+    min_tracking_confidence=0.5
+)
 
-def get_font(language=None, size=50):
-    if language == "Hindi":
-        return pygame.font.Font("Mangal.ttf", size)
-    return pygame.font.SysFont("arial", size)
+# Global variables for gesture detection
+current_finger_count = 0
+gesture_lock = threading.Lock()
+camera_active = True
 
-class Button:
-    def __init__(self, screen, left, top, width, height, name):
-        self.label = name
-        self.buttonColour = (255, 0, 0)
-        self.buttonRect = pygame.Rect(left, top, width, height)
-        self.buttonSurface = pygame.Surface(self.buttonRect.size)
-
-    def drawButton(self, screen):
-        self.buttonSurface.fill(self.buttonColour)
-        self.buttonSurface.convert()
-        screen.blit(self.buttonSurface, (self.buttonRect.x, self.buttonRect.y))
-        pygame.draw.rect(self.buttonSurface, self.buttonColour, self.buttonRect, 1)
-        self.drawText(screen)
-
-    def drawText(self, screen):
-        buttonTextFont = get_font("English", 50)  # fixed: defaulting to English
-        buttonText = buttonTextFont.render(self.label, True, (0, 55, 90), self.buttonColour)
-        buttonText = buttonText.convert()
-        screen.blit(buttonText, self.buttonRect)
-
-class ColouredWord:
-    def __init__(self, fontColour, word, language):
-        wordFont = get_font(language, 72)
-        self.theColourText = wordFont.render(word, True, fontColour)
-        self.position = [random.randrange(40, 420), random.randrange(40, 440)]
-
-    def drawWord(self, screen):
-        screen.blit(self.theColourText, self.position)
-
-    def moveWord(self, screen, vector, backgroundColour):
-     wordClearSurface = pygame.Surface(self.theColourText.get_size(), pygame.SRCALPHA)
-     wordClearSurface.fill(backgroundColour)
-     screen.blit(wordClearSurface, self.position)
-
-     word_width, word_height = self.theColourText.get_size()
-
-    # Screen boundaries
-     min_x = 0
-     max_x = 600 - word_width
-     min_y = 0
-     max_y = 500 - word_height  # Limit to 500px to stay above buttons
-
-    # Bounce off walls
-     if self.position[0] <= min_x or self.position[0] >= max_x:
-        vector[0] *= -1
-     if self.position[1] <= min_y or self.position[1] >= max_y:
-        vector[1] *= -1
-
-    # Update position
-     self.position[0] = max(min_x, min(max_x, self.position[0] + vector[0]))
-     self.position[1] = max(min_y, min(max_y, self.position[1] + vector[1]))
-
-     screen.blit(self.theColourText, self.position)
-
-def drawMenu(screen, background, playEnglishBtn, playHindiBtn, resultsBtn):
-    background.fill((153, 255, 153))
-    background = background.convert()
-    screen.blit(background, (0, 0))
-    playEnglishBtn.drawButton(screen)
-    playHindiBtn.drawButton(screen)
-    resultsBtn.drawButton(screen)
-    titleFont = get_font("English", 60)
-    titleText = titleFont.render("Stroop Effect Game", True, (75, 0, 130))
-    screen.blit(titleText, (60, 50))
-    instructionFont = get_font("English", 32)
-    instructionText = instructionFont.render("Made by Smriti Aggarwal", True, (220, 20, 60))
-    screen.blit(instructionText, (100, 450))
-    pygame.display.update()
-
-def drawGameButtons(buttonRects, colours, language):
-    buttonColour = (250, 235, 215)
-    buttons = []
-    for i in range(len(colours)):
-        if i <= 2:
-            buttonRects.append(pygame.Rect(i * 200, 500, 200, 50))
-        else:
-            buttonRects.append(pygame.Rect((i - 3) * 200, 550, 200, 50))
-        buttons.append(pygame.Surface(buttonRects[i].size))
-        buttons[i].fill(buttonColour)
-        buttons[i].convert()
-        screen.blit(buttons[i], (buttonRects[i].x, buttonRects[i].y))
-        pygame.draw.rect(buttons[i], buttonColour, buttonRects[i], 30)
-        buttonFont = get_font(language, 36)
-        buttonText = buttonFont.render(colours[i][0], True, (0, 55, 90, 0))
-        buttonText = buttonText.convert_alpha()
-        screen.blit(buttonText, (buttonRects[i].x + 20, buttonRects[i].y + 5))
-
-def displayHeaderInfo(text, position, colour, language):
-    Font = get_font(language, 50)
-
-    if language == "Hindi":
-        if "Score" in text:
-            value = ''.join(filter(str.isdigit, text))
-            text = "स्कोर: " + convert_to_hindi_numerals(value)
-        elif "Timer" in text:
-            value = ''.join(filter(str.isdigit, text))
-            text = "समय: " + convert_to_hindi_numerals(value)
-
-    Text = Font.render(text, True, (0, 0, 0), (255, 255, 255))
-    screen.blit(Text, (600 - (200 * position), 0))
-
-
+def count_fingers(landmarks):
+    """Count extended fingers based on hand landmarks"""
+    # Finger tip and pip landmarks
+    finger_tips = [8, 12, 16, 20]  # Index, Middle, Ring, Pinky
+    finger_pips = [6, 10, 14, 18]
     
-def playGame(language):
-    gameBackground = pygame.Surface((600, 500))
-    gameBackground.fill((255, 255, 255))
-    gameBackground.convert()
+    fingers_up = 0
+    
+    # Count fingers (excluding thumb for simplicity)
+    for tip, pip in zip(finger_tips, finger_pips):
+        if landmarks[tip].y < landmarks[pip].y:
+            fingers_up += 1
+    
+    # Add thumb (different logic due to thumb orientation)
+    if landmarks[4].x > landmarks[3].x:  # Thumb tip vs thumb ip
+        fingers_up += 1
+    
+    return fingers_up
 
-    colours = languages[language]
-    colourButtonRects = []
-    drawGameButtons(colourButtonRects, colours, language)
+def detect_gesture():
+    """Background thread for gesture detection"""
+    global current_finger_count, camera_active
+    
+    cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        print("Error: Could not open camera")
+        return
+    
+    stable_count = 0
+    stable_frames = 0
+    required_stable_frames = 10  # Need 10 consistent frames
+    
+    while camera_active:
+        ret, frame = cap.read()
+        if not ret:
+            continue
+        
+        # Flip frame horizontally for mirror effect
+        frame = cv2.flip(frame, 1)
+        
+        # Convert BGR to RGB
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = hands.process(rgb_frame)
+        
+        finger_count = 0
+        if results.multi_hand_landmarks:
+            for hand_landmarks in results.multi_hand_landmarks:
+                finger_count = count_fingers(hand_landmarks.landmark)
+                
+                # Draw hand landmarks for visual feedback
+                mp.solutions.drawing_utils.draw_landmarks(
+                    frame, hand_landmarks, mp_hands.HAND_CONNECTIONS
+                )
+                break
+        
+        # Stabilize gesture recognition
+        if finger_count == stable_count:
+            stable_frames += 1
+        else:
+            stable_count = finger_count
+            stable_frames = 0
+        
+        if stable_frames >= required_stable_frames:
+            with gesture_lock:
+                current_finger_count = finger_count
+        
+        # Display finger count on camera feed
+        cv2.putText(frame, f"Fingers: {finger_count}", (10, 30), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        cv2.putText(frame, "Show 1-5 fingers to select", (10, 70),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        
+        cv2.imshow("Gesture Control (Press 'q' to quit)", frame)
+        
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            camera_active = False
+            break
+    
+    cap.release()
+    cv2.destroyAllWindows()
 
-    userScore = 0
-    timer = 0.0
-    timelimit = 30
-    FPS = 40
-    clock = pygame.time.Clock()
+def get_gesture_input():
+    """Get current gesture input (1-5 fingers = index 0-4)"""
+    with gesture_lock:
+        if 1 <= current_finger_count <= 5:
+            return current_finger_count - 1  # Convert to 0-based index
+    return None
 
-    while timer < timelimit:
-        milliseconds = clock.tick(FPS)
-        timer += milliseconds / 1000
-        isMoving = False
-        fontColourIndex = random.randrange(0, 6)
-        fontColour = colours[fontColourIndex][1]
-        word = colours[random.randrange(0, 6)][0]
-        theColouredWord = ColouredWord(fontColour, word, language)
+def draw_color_options():
+    """Draw color selection buttons with numbers"""
+    button_rects = []
+    for i, (name, color) in enumerate(colors):
+        x = 50 + i * 140
+        y = 450
+        
+        # Draw button background
+        pygame.draw.rect(screen, (240, 240, 240), (x, y, 130, 80))
+        pygame.draw.rect(screen, (0, 0, 0), (x, y, 130, 80), 2)
+        
+        # Draw color name
+        text = font_small.render(name, True, color)
+        text_rect = text.get_rect(center=(x + 65, y + 25))
+        screen.blit(text, text_rect)
+        
+        # Draw finger count instruction
+        finger_text = font_small.render(f"{i + 1} finger{'s' if i > 0 else ''}", True, (0, 0, 0))
+        finger_rect = finger_text.get_rect(center=(x + 65, y + 55))
+        screen.blit(finger_text, finger_rect)
+        
+        button_rects.append(pygame.Rect(x, y, 130, 80))
+    
+    return button_rects
 
-        if userScore >= 5:
-            backGroundColourIndex = random.randrange(0, 6)
-            while backGroundColourIndex == fontColourIndex:
-                backGroundColourIndex = random.randrange(0, 6)
-            backgroundColour = colours[backGroundColourIndex][1]
-            gameBackground.fill(backgroundColour)
+def show_instructions():
+    """Show game instructions"""
+    screen.fill((255, 255, 255))
+    
+    instructions = [
+        "STROOP EFFECT GAME",
+        "",
+        "Rules:",
+        "1. A word will appear in a COLOR",
+        "2. Ignore the WORD, focus on the COLOR",
+        "3. Show fingers to select the color:",
+        "   1 finger = Red",
+        "   2 fingers = Green", 
+        "   3 fingers = Blue",
+        "   4 fingers = Yellow",
+        "   5 fingers = Pink",
+        "",
+        "Make sure your camera is working!",
+        "Press SPACE to start or ESC to quit"
+    ]
+    
+    y_offset = 50
+    for line in instructions:
+        if line.startswith("STROOP"):
+            text = font_large.render(line, True, (255, 0, 0))
+        elif line.startswith("Rules:"):
+            text = font_medium.render(line, True, (0, 0, 255))
+        else:
+            text = font_small.render(line, True, (0, 0, 0))
+        
+        text_rect = text.get_rect(center=(400, y_offset))
+        screen.blit(text, text_rect)
+        y_offset += 30
+    
+    pygame.display.flip()
 
-        if userScore >= 10:
-            isMoving = True
-            movementVector = [random.randrange(-5, 5), random.randrange(-5, 5)]
-
-        screen.blit(gameBackground, (0, 0))
-        displayHeaderInfo("Score: " + str(userScore), 1, (255, 255, 0), language)
-        theColouredWord.drawWord(screen)
-        pygame.display.update()
-
-        userClicked = False
-        while not userClicked and timer < timelimit:
-            if isMoving:
-                theColouredWord.moveWord(screen, movementVector, backgroundColour)
-            milliseconds = clock.tick(FPS)
-            timer += milliseconds / 1000
-            displayHeaderInfo("Timer: " + str(round(timer)), 2, (255, 0, 0), language)
-            pygame.display.update()
-
+def main_game():
+    """Main game loop"""
+    global camera_active
+    
+    # Start gesture detection thread
+    gesture_thread = threading.Thread(target=detect_gesture, daemon=True)
+    gesture_thread.start()
+    
+    # Show instructions
+    waiting_for_start = True
+    while waiting_for_start:
+        show_instructions()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                camera_active = False
+                pygame.quit()
+                return
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    waiting_for_start = False
+                elif event.key == pygame.K_ESCAPE:
+                    camera_active = False
+                    pygame.quit()
+                    return
+        clock.tick(60)
+    
+    # Game variables
+    score = 0
+    total_questions = 20
+    question_count = 0
+    
+    while question_count < total_questions:
+        # Generate random word and color
+        word_name = random.choice(colors)[0]
+        correct_color_index = random.randint(0, 4)
+        correct_color_name, correct_color_rgb = colors[correct_color_index]
+        
+        # Display question
+        screen.fill((255, 255, 255))
+        
+        # Show progress
+        progress_text = font_medium.render(f"Question {question_count + 1}/{total_questions}", True, (0, 0, 0))
+        screen.blit(progress_text, (20, 20))
+        
+        # Show score
+        score_text = font_medium.render(f"Score: {score}", True, (0, 0, 0))
+        screen.blit(score_text, (600, 20))
+        
+        # Show the word in the target color
+        word_surface = font_large.render(word_name, True, correct_color_rgb)
+        word_rect = word_surface.get_rect(center=(400, 200))
+        screen.blit(word_surface, word_rect)
+        
+        # Show instruction
+        instruction = font_medium.render("Show fingers for the COLOR (not the word):", True, (0, 0, 0))
+        instruction_rect = instruction.get_rect(center=(400, 300))
+        screen.blit(instruction, instruction_rect)
+        
+        # Draw color options
+        draw_color_options()
+        
+        pygame.display.flip()
+        
+        # Wait for gesture input
+        start_time = time.time()
+        answered = False
+        
+        while not answered and time.time() - start_time < 5.0:  # 5 second timeout
+            gesture_input = get_gesture_input()
+            
+            if gesture_input is not None:
+                if gesture_input == correct_color_index:
+                    score += 1
+                    # Show correct feedback
+                    feedback_text = font_large.render("Correct! +1", True, (0, 255, 0))
+                else:
+                    # Show incorrect feedback
+                    feedback_text = font_large.render("Wrong!", True, (255, 0, 0))
+                
+                screen.fill((255, 255, 255))
+                feedback_rect = feedback_text.get_rect(center=(400, 300))
+                screen.blit(feedback_text, feedback_rect)
+                pygame.display.flip()
+                time.sleep(1)
+                answered = True
+            
+            # Handle pygame events
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
+                    camera_active = False
                     pygame.quit()
-                    quit()
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    for i in range(len(colourButtonRects)):
-                        if colourButtonRects[i].collidepoint(pygame.mouse.get_pos()) and i == fontColourIndex:
-                            userClicked = True
-                            userScore += 1
-                            screen.blit(gameBackground, (0, 0))
+                    return
+            
+            clock.tick(60)
+        
+        if not answered:
+            # Timeout
+            screen.fill((255, 255, 255))
+            timeout_text = font_large.render("Time's up!", True, (255, 165, 0))
+            timeout_rect = timeout_text.get_rect(center=(400, 300))
+            screen.blit(timeout_text, timeout_rect)
+            pygame.display.flip()
+            time.sleep(1)
+        
+        question_count += 1
+    
+    # Show final score
+    screen.fill((255, 255, 255))
+    final_score_text = font_large.render(f"Final Score: {score}/{total_questions}", True, (0, 100, 0))
+    final_rect = final_score_text.get_rect(center=(400, 250))
+    screen.blit(final_score_text, final_rect)
+    
+    percentage = (score / total_questions) * 100
+    percentage_text = font_medium.render(f"Accuracy: {percentage:.1f}%", True, (0, 0, 0))
+    perc_rect = percentage_text.get_rect(center=(400, 300))
+    screen.blit(percentage_text, perc_rect)
+    
+    restart_text = font_small.render("Press SPACE to play again or ESC to quit", True, (0, 0, 0))
+    restart_rect = restart_text.get_rect(center=(400, 400))
+    screen.blit(restart_text, restart_rect)
+    
+    pygame.display.flip()
+    
+    # Wait for restart or quit
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                waiting = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    main_game()  # Restart game
+                    return
+                elif event.key == pygame.K_ESCAPE:
+                    waiting = False
+        clock.tick(60)
+    
+    camera_active = False
+    pygame.quit()
 
-    screen.blit(gameBackground, (0, 0))
-    pygame.display.update()
-    user_results[language] = userScore
-
-def displayResults():
-    background.fill((255, 255, 255))
-    screen.blit(background, (0, 0))
-    font = get_font("English", 40)
-
-    y = 100
-    for lang in user_results:
-        resultText = font.render(f"{lang} Score: {user_results[lang]}", True, (0, 0, 0))
-        screen.blit(resultText, (100, y))
-        y += 60
-
-    if "English" in user_results and "Hindi" in user_results:
-        diff = user_results["English"] - user_results["Hindi"]
-        feedback = "You performed better in English" if diff > 0 else "You performed better in Hindi" if diff < 0 else "Equal performance"
-        analysisText = font.render(feedback, True, (255, 0, 0))
-        screen.blit(analysisText, (100, y))
-
-    pygame.display.update()
-    pygame.time.wait(5000)
-
-# Setup buttons
-playEnglishBtn = Button(screen, 200, 180, 200, 50, "Play English")
-playHindiBtn = Button(screen, 200, 260, 200, 50, "Play Hindi")
-resultsBtn = Button(screen, 200, 340, 200, 50, "Compare Results")
-
-drawMenu(screen, background, playEnglishBtn, playHindiBtn, resultsBtn)
-
-# Main loop
-menuloop = True
-while menuloop:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            menuloop = False
-        elif event.type == pygame.MOUSEBUTTONUP:
-            if playEnglishBtn.buttonRect.collidepoint(pygame.mouse.get_pos()):
-                playGame("English")
-                drawMenu(screen, background, playEnglishBtn, playHindiBtn, resultsBtn)
-            elif playHindiBtn.buttonRect.collidepoint(pygame.mouse.get_pos()):
-                playGame("Hindi")
-                drawMenu(screen, background, playEnglishBtn, playHindiBtn, resultsBtn)
-            elif resultsBtn.buttonRect.collidepoint(pygame.mouse.get_pos()):
-                displayResults()
-                drawMenu(screen, background, playEnglishBtn, playHindiBtn, resultsBtn)
-
-pygame.quit()
+if __name__ == "__main__":
+    main_game()

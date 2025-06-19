@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import pygame
 import random
 import cv2
@@ -68,8 +70,8 @@ LANGUAGES = {
             'press_1': 'Press 1 for English',
             'press_2': 'Press 2 for Hindi / हिंदी के लिए 2 दबाएं',
             'rules': 'नियम:',
-            'rule1': '1. एक शब्द एक रंग में दिखाई देगा',
-            'rule2': '2. शब्द को नज़रअंदाज़ करें, रंग पर ध्यान दें',
+            'rule1': '1. एक शब्द एक रंग में दिखाई देगी',
+            'rule2': '2. शब्द को नज़रअंदाज करें, रंग पर ध्यान दें',
             'rule3': '3. रंग चुनने के लिए उंगलियां दिखाएं:',
             'finger_mapping': [
                 '   1 उंगली = लाल',
@@ -87,8 +89,9 @@ LANGUAGES = {
             'wrong': 'गलत!',
             'timeout': 'समय समाप्त!',
             'final_score': 'अंतिम स्कोर',
-            'accuracy': 'सटीकता',
+            'accuracy': 'सतीकता',
             'restart': 'फिर से खेलने के लिए SPACE दबाएं या बाहर निकलने के लिए ESC',
+            'accuracy': 'सतीकता',
             'fingers_text': ['उंगली', 'उंगलियां', 'उंगलियां', 'उंगलियां', 'उंगलियां'],
             'gesture_instruction': '1-5 उंगलियां दिखाएं',
             'language_change': 'भाषा बदलने के लिए L दबाएं'
@@ -104,45 +107,40 @@ ui_text = LANGUAGES[current_language]['ui']
 # Font setup with Hindi support
 def load_fonts():
     """Load fonts with Hindi support"""
-    # Check if Mangal font exists in the current directory
     mangal_font_path = "Mangal.ttf"
-    
+
     if os.path.exists(mangal_font_path):
-        # Use Mangal font for Hindi text
         try:
             font_large_hindi = pygame.font.Font(mangal_font_path, 50)
             font_medium_hindi = pygame.font.Font(mangal_font_path, 32)
             font_small_hindi = pygame.font.Font(mangal_font_path, 22)
             font_tiny_hindi = pygame.font.Font(mangal_font_path, 18)
-            print("✓ Mangal font loaded successfully for Hindi text!")
-            
+            print("Mangal font loaded successfully for Hindi text!")
+
             # Test Hindi rendering
             test_surface = font_medium_hindi.render("भाषा", True, (0, 0, 0))
-            print("✓ Hindi text rendering test passed!")
-            
+            print("Hindi text rendering test passed!")
+
         except Exception as e:
-            print(f"✗ Error loading Mangal font: {e}")
-            print("✗ Falling back to system fonts...")
-            # Try system Hindi fonts
+            print(f"Error loading Mangal font: {e}")
+            print("Falling back to system fonts...")
             font_large_hindi = pygame.font.SysFont("mangal,devanagari,noto sans devanagari", 50)
             font_medium_hindi = pygame.font.SysFont("mangal,devanagari,noto sans devanagari", 32)
             font_small_hindi = pygame.font.SysFont("mangal,devanagari,noto sans devanagari", 22)
             font_tiny_hindi = pygame.font.SysFont("mangal,devanagari,noto sans devanagari", 18)
     else:
-        print("✗ mangal.ttf not found in current directory.")
-        print("ℹ Trying system fonts for Hindi support...")
-        # Try system Hindi fonts
+        print("mangal.ttf not found in current directory.")
+        print("Trying system fonts for Hindi support...")
         font_large_hindi = pygame.font.SysFont("mangal,devanagari,noto sans devanagari", 50)
         font_medium_hindi = pygame.font.SysFont("mangal,devanagari,noto sans devanagari", 32)
         font_small_hindi = pygame.font.SysFont("mangal,devanagari,noto sans devanagari", 22)
         font_tiny_hindi = pygame.font.SysFont("mangal,devanagari,noto sans devanagari", 18)
-    
-    # English fonts (using system fonts)
+
     font_large_english = pygame.font.SysFont("arial", 50)
     font_medium_english = pygame.font.SysFont("arial", 32)
     font_small_english = pygame.font.SysFont("arial", 22)
     font_tiny_english = pygame.font.SysFont("arial", 18)
-    
+
     return {
         'hindi': {
             'large': font_large_hindi,
@@ -160,6 +158,7 @@ def load_fonts():
 
 # Load fonts
 fonts = load_fonts()
+
 
 def get_font(size):
     """Get appropriate font based on current language"""

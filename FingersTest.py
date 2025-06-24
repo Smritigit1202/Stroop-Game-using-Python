@@ -103,6 +103,11 @@ LANGUAGES = {
 current_language = 'english'
 colors = LANGUAGES[current_language]['colors']
 ui_text = LANGUAGES[current_language]['ui']
+# To track scores and times per language
+results_by_language = {
+    'english': {'score': 0, 'time': 0.0},
+    'hindi': {'score': 0, 'time': 0.0}
+}
 
 # Font setup with Hindi support
 def load_fonts():
@@ -333,7 +338,11 @@ def select_language():
     # Option 2 - Mixed text, render separately
     english_part2 = "Press 2 for Hindi / "
     hindi_part2 = "हिंदी के लिए 2 दबाएं"
-    
+    # Option 3 - Compare results
+    option3_text = fonts['english']['medium'].render("Press 3 to Compare Scores & Times", True, (0, 0, 0))
+    option3_rect = option3_text.get_rect(center=(450, 400))
+    screen.blit(option3_text, option3_rect)
+
     # Render English part
     english_text2 = fonts['english']['medium'].render(english_part2, True, (0, 0, 0))
     english_width2 = english_text2.get_width()
@@ -365,7 +374,39 @@ def select_language():
                     return 'hindi'
                 elif event.key == pygame.K_ESCAPE:
                     return None
+                elif event.key == pygame.K_3:
+                    show_comparison_results()
+    # Redraw the language menu again
+                    return select_language()
+
         clock.tick(60)
+
+def show_comparison_results():
+    screen.fill((255, 255, 255))
+    title = render_text("Language Performance Comparison", 'medium', (0, 0, 150))
+    screen.blit(title, (180, 60))
+
+    y = 130
+    for lang in ['english', 'hindi']:
+        score = results_by_language[lang]['score']
+        time_taken = results_by_language[lang]['time']
+        avg_time = time_taken / score if score > 0 else 0.0
+        lang_title = lang.title()
+        text = f"{lang_title}: Score={score}, Time={time_taken:.1f}s, Avg Time/Correct={avg_time:.2f}s"
+        rendered = render_text(text, 'small', (0, 0, 0))
+        screen.blit(rendered, (100, y))
+        y += 50
+
+    # Comparison summary
+    if all(results_by_language[lang]['score'] > 0 for lang in ['english', 'hindi']):
+        e_avg = results_by_language['english']['time'] / results_by_language['english']['score']
+        h_avg = results_by_language['hindi']['time'] / results_by_language['hindi']['score']
+        better = "English" if e_avg < h_avg else "Hindi" if h_avg < e_avg else "Both equally"
+        summary = render_text(f"Better performance: {better}", 'medium', (255, 0, 0))
+        screen.blit(summary, (200, y + 30))
+
+    pygame.display.flip()
+    pygame.time.wait(6000)  # Pause for 6 seconds before returning
 
 def show_instructions():
     """Show game instructions"""
@@ -455,6 +496,10 @@ def main_game():
     score = 0
     total_questions = 20
     question_count = 0
+
+# Start timer for this language
+    start_game_time = time.time()
+
     
     while question_count < total_questions:
         # Generate random word and color

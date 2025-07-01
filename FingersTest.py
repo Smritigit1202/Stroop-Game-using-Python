@@ -91,7 +91,6 @@ LANGUAGES = {
             'final_score': 'अंतिम स्कोर',
             'accuracy': 'सतीकता',
             'restart': 'फिर से खेलने के लिए SPACE दबाएं या बाहर निकलने के लिए ESC',
-            'accuracy': 'सतीकता',
             'fingers_text': ['उंगली', 'उंगलियां', 'उंगलियां', 'उंगलियां', 'उंगलियां'],
             'gesture_instruction': '1-5 उंगलियां दिखाएं',
             'language_change': 'भाषा बदलने के लिए L दबाएं'
@@ -224,7 +223,7 @@ def detect_gesture():
     
     stable_count = 0
     stable_frames = 0
-    required_stable_frames = 10
+    required_stable_frames = 20  # Increased for more stability
     
     while camera_active:
         ret, frame = cap.read()
@@ -255,9 +254,11 @@ def detect_gesture():
                 current_finger_count = finger_count
         
         # Display info on camera feed
-        cv2.putText(frame, f"Fingers: {finger_count}", (10, 30), 
+        cv2.putText(frame, f"Detected: {finger_count}", (10, 30), 
                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        cv2.putText(frame, ui_text['gesture_instruction'], (10, 70),
+        cv2.putText(frame, f"Stable: {stable_frames}/{required_stable_frames}", (10, 70), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+        cv2.putText(frame, ui_text['gesture_instruction'], (10, 110),
                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
         
         cv2.imshow("Gesture Control (Press 'q' to quit)", frame)
@@ -338,6 +339,7 @@ def select_language():
     # Option 2 - Mixed text, render separately
     english_part2 = "Press 2 for Hindi / "
     hindi_part2 = "हिंदी के लिए 2 दबाएं"
+    
     # Option 3 - Compare results
     option3_text = fonts['english']['medium'].render("Press 3 to Compare Scores & Times", True, (0, 0, 0))
     option3_rect = option3_text.get_rect(center=(450, 400))
@@ -376,14 +378,22 @@ def select_language():
                     return None
                 elif event.key == pygame.K_3:
                     show_comparison_results()
-    # Redraw the language menu again
+                    # Redraw the language menu again
                     return select_language()
 
         clock.tick(60)
 
 def show_comparison_results():
+    """Display score and time comparison for English and Hindi modes, always in English"""
     screen.fill((255, 255, 255))
-    title = render_text("Language Performance Comparison", 'medium', (0, 0, 150))
+
+    # Use English font/text only
+    english_fonts = fonts['english']
+
+    def render_en(text, size, color):
+        return english_fonts[size].render(text, True, color)
+
+    title = render_en("Language Performance Comparison", 'medium', (0, 0, 150))
     screen.blit(title, (180, 60))
 
     y = 130
@@ -392,8 +402,8 @@ def show_comparison_results():
         time_taken = results_by_language[lang]['time']
         avg_time = time_taken / score if score > 0 else 0.0
         lang_title = lang.title()
-        text = f"{lang_title}: Score={score}, Time={time_taken:.1f}s, Avg Time/Correct={avg_time:.2f}s"
-        rendered = render_text(text, 'small', (0, 0, 0))
+        text = f"{lang_title}: Score = {score}, Time = {time_taken:.1f}s, Avg Time/Correct = {avg_time:.2f}s"
+        rendered = render_en(text, 'small', (0, 0, 0))
         screen.blit(rendered, (100, y))
         y += 50
 
@@ -402,11 +412,28 @@ def show_comparison_results():
         e_avg = results_by_language['english']['time'] / results_by_language['english']['score']
         h_avg = results_by_language['hindi']['time'] / results_by_language['hindi']['score']
         better = "English" if e_avg < h_avg else "Hindi" if h_avg < e_avg else "Both equally"
-        summary = render_text(f"Better performance: {better}", 'medium', (255, 0, 0))
+        summary = render_en(f"Better performance: {better}", 'medium', (255, 0, 0))
         screen.blit(summary, (200, y + 30))
 
+    # Back to main menu instruction (in English)
+    back_text = render_en("Press B to go back to main menu", 'small', (0, 0, 0))
+    screen.blit(back_text, (260, y + 100))
+
     pygame.display.flip()
-    pygame.time.wait(6000)  # Pause for 6 seconds before returning
+
+    # Wait for user to press 'B' to return
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_b:
+                    waiting = False
+        clock.tick(60)
+
+
 
 def show_instructions():
     """Show game instructions"""
@@ -497,15 +524,23 @@ def main_game():
     total_questions = 20
     question_count = 0
 
-# Start timer for this language
+    # Start timer for this language
     start_game_time = time.time()
-
     
     while question_count < total_questions:
-        # Generate random word and color
-        word_name = random.choice(colors)[0]
-        correct_color_index = random.randint(0, 4)
-        correct_color_name, correct_color_rgb = colors[correct_color_index]
+        # FIXED: Generate proper Stroop test - word and display color should be different
+        word_index = random.randint(0, 4)
+        display_color_index = random.randint(0, 4)
+        
+        # Ensure the word and color are different for proper Stroop effect
+        while word_index == display_color_index:
+            display_color_index = random.randint(0, 4)
+        
+        word_name = colors[word_index][0]  # The word text
+        display_color_rgb = colors[display_color_index][1]  # The color to display the word in
+        
+        # The CORRECT answer is the display color index (what color the word appears in)
+        correct_answer_index = display_color_index
         
         # Display question
         screen.fill((255, 255, 255))
@@ -522,8 +557,8 @@ def main_game():
         lang_indicator = render_text(f"Language: {current_language.title()}", 'tiny', (128, 128, 128))
         screen.blit(lang_indicator, (20, 660))
         
-        # Show the word in the target color
-        word_surface = render_text(word_name, 'large', correct_color_rgb)
+        # Show the word in the display color (this creates the Stroop effect)
+        word_surface = render_text(word_name, 'large', display_color_rgb)
         word_rect = word_surface.get_rect(center=(450, 200))
         screen.blit(word_surface, word_rect)
         
@@ -535,28 +570,48 @@ def main_game():
         # Draw color options
         draw_color_options()
         
+        # Debug info (optional - remove in production)
+        debug_text = f"Word: {word_name}, Display Color: {colors[display_color_index][0]}, Correct Answer: {correct_answer_index + 1}"
+        debug_surface = pygame.font.SysFont("arial", 16).render(debug_text, True, (128, 128, 128))
+        screen.blit(debug_surface, (20, 600))
+        
         pygame.display.flip()
         
         # Wait for gesture input
         start_time = time.time()
         answered = False
+        last_gesture = None
+        gesture_cooldown = 0
         
-        while not answered and time.time() - start_time < 5.0:
+        while not answered and time.time() - start_time < 8.0:  # Increased time limit
+            current_time = time.time()
             gesture_input = get_gesture_input()
             
-            if gesture_input is not None:
-                if gesture_input == correct_color_index:
-                    score += 1
-                    feedback_text = render_text(ui_text['correct'], 'large', (0, 255, 0))
-                else:
-                    feedback_text = render_text(ui_text['wrong'], 'large', (255, 0, 0))
-                
-                screen.fill((255, 255, 255))
-                feedback_rect = feedback_text.get_rect(center=(450, 350))
-                screen.blit(feedback_text, feedback_rect)
-                pygame.display.flip()
-                time.sleep(1)
-                answered = True
+            # Only process gesture if enough time has passed since last detection
+            if gesture_input is not None and current_time - gesture_cooldown > 1.5:  # 1.5 second cooldown
+                if gesture_input != last_gesture:  # Only if it's a different gesture
+                    last_gesture = gesture_input
+                    gesture_cooldown = current_time
+                    
+                    # Check if the gesture matches the correct color (display color, not word color)
+                    if gesture_input == correct_answer_index:
+                        score += 1
+                        feedback_text = render_text(ui_text['correct'], 'large', (0, 255, 0))
+                    else:
+                        feedback_text = render_text(ui_text['wrong'], 'large', (255, 0, 0))
+                    
+                    screen.fill((255, 255, 255))
+                    feedback_rect = feedback_text.get_rect(center=(450, 350))
+                    screen.blit(feedback_text, feedback_rect)
+                    
+                    # Show which gesture was detected
+                    detected_text = render_text(f"Detected: {gesture_input + 1} fingers", 'medium', (0, 0, 255))
+                    detected_rect = detected_text.get_rect(center=(450, 400))
+                    screen.blit(detected_text, detected_rect)
+                    
+                    pygame.display.flip()
+                    time.sleep(2)  # Show feedback longer
+                    answered = True
             
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -564,7 +619,7 @@ def main_game():
                     pygame.quit()
                     return
             
-            clock.tick(60)
+            clock.tick(30)  # Reduced frame rate to give more processing time
         
         if not answered:
             screen.fill((255, 255, 255))
@@ -572,9 +627,15 @@ def main_game():
             timeout_rect = timeout_text.get_rect(center=(450, 350))
             screen.blit(timeout_text, timeout_rect)
             pygame.display.flip()
-            time.sleep(1)
+            time.sleep(2)  # Show timeout message longer
         
         question_count += 1
+    
+    # Calculate and store results for this language
+    end_game_time = time.time()
+    total_time = end_game_time - start_game_time
+    results_by_language[current_language]['score'] = score
+    results_by_language[current_language]['time'] = total_time
     
     # Show final score
     screen.fill((255, 255, 255))

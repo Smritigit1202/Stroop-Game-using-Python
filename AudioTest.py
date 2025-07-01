@@ -34,23 +34,23 @@ try:
     import numpy as np
     import scipy.io.wavfile as wavfile
     audio_methods['sounddevice'] = True
-    print("✓ Method 1: SoundDevice - Available")
+    print("  Method 1: SoundDevice - Available")
 except ImportError as e:
     audio_methods['sounddevice'] = False
-    print("✗ Method 1: SoundDevice - Not available:", str(e))
+    print("  Method 1: SoundDevice - Not available:", str(e))
 
 # Method 2: PyAudio (original, often problematic)
 try:
     import pyaudio
     audio_methods['pyaudio'] = True
-    print("✓ Method 2: PyAudio - Available")
+    print("  Method 2: PyAudio - Available")
 except ImportError as e:
     audio_methods['pyaudio'] = False
-    print("✗ Method 2: PyAudio - Not available:", str(e))
+    print("  Method 2: PyAudio - Not available:", str(e))
 
 # Method 3: System commands (most universal)
 audio_methods['system'] = True
-print("✓ Method 3: System Commands - Available")
+print("  Method 3: System Commands - Available")
 
 # Method 4: Pydub + SimpleAudio
 try:
@@ -59,26 +59,26 @@ try:
     from pydub.playback import play
     import simpleaudio as sa
     audio_methods['pydub'] = True
-    print("✓ Method 4: Pydub + SimpleAudio - Available")
+    print("  Method 4: Pydub + SimpleAudio - Available")
 except ImportError as e:
     audio_methods['pydub'] = False
-    print("✗ Method 4: Pydub + SimpleAudio - Not available:", str(e))
+    print("  Method 4: Pydub + SimpleAudio - Not available:", str(e))
 
 # Method 5: Wave + OS commands
 try:
     import wave
     audio_methods['wave_os'] = True
-    print("✓ Method 5: Wave + OS Commands - Available")
+    print("  Method 5: Wave + OS Commands - Available")
 except ImportError as e:
     audio_methods['wave_os'] = False
-    print("✗ Method 5: Wave + OS Commands - Not available:", str(e))
+    print("  Method 5: Wave + OS Commands - Not available:", str(e))
 
 # Speech recognition (REQUIRED)
 try:
     import speech_recognition as sr
-    print("✓ SpeechRecognition - Available")
+    print("  SpeechRecognition - Available")
 except ImportError:
-    print("✗ SpeechRecognition - REQUIRED! Install with: pip install SpeechRecognition")
+    print("  SpeechRecognition - REQUIRED! Install with: pip install SpeechRecognition")
     sys.exit(1)
 
 # Languages and UI text
@@ -494,13 +494,13 @@ class AudioRecorder:
                     continue
                 
                 if audio:
-                    print(f"✓ Successfully recorded with {method_name}")
+                    print(f"  Successfully recorded with {method_name}")
                     return audio, method_name
                 else:
-                    print(f"✗ {method_name} returned no audio data")
+                    print(f"  {method_name} returned no audio data")
                     
             except Exception as e:
-                print(f"✗ Method {method_name} failed with exception: {e}")
+                print(f"  Method {method_name} failed with exception: {e}")
                 continue
         
         print("All recording methods failed!")
@@ -547,18 +547,18 @@ def record_and_recognize_audio():
                     language=lang_code,
                     show_all=False
                 )
-                print(f"✓ {desc} recognition successful: '{recognized_text}'")
+                print(f"  {desc} recognition successful: '{recognized_text}'")
                 break
             except sr.UnknownValueError:
-                print(f"✗ {desc}: Could not understand audio")
+                print(f"  {desc}: Could not understand audio")
                 recognition_error = "Could not understand speech"
                 continue
             except sr.RequestError as e:
-                print(f"✗ {desc}: Request failed - {e}")
+                print(f"  {desc}: Request failed - {e}")
                 recognition_error = f"Recognition service error: {e}"
                 continue
             except Exception as e:
-                print(f"✗ {desc}: Unexpected error - {e}")
+                print(f"  {desc}: Unexpected error - {e}")
                 recognition_error = f"Recognition error: {e}"
                 continue
         
@@ -590,7 +590,7 @@ def record_and_recognize_audio():
 # Update the audio_methods check to include direct PyAudio
 audio_methods['direct_pyaudio'] = audio_methods.get('pyaudio', False)
 if audio_methods['direct_pyaudio']:
-    print("✓ Method: Direct PyAudio - Available")
+    print("  Method: Direct PyAudio - Available")
 
 # Re-create the audio recorder with improved methods
 audio_recorder = AudioRecorder()

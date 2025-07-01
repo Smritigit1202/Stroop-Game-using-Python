@@ -605,10 +605,17 @@ def main_game():
                     screen.blit(feedback_text, feedback_rect)
                     
                     # Show which gesture was detected
-                    detected_text = render_text(f"Detected: {gesture_input + 1} fingers", 'medium', (0, 0, 255))
+                    finger_count = gesture_input + 1
+                    finger_word = ui_text['fingers_text'][gesture_input]
+
+                    if current_language == 'english':
+                        detected_text = render_text(f"Detected: {finger_count} {finger_word}", 'medium', (0, 0, 255))
+                    else:
+                        detected_text = render_text(f"पता चला: {finger_count} {finger_word}", 'medium', (0, 0, 255))
+  
                     detected_rect = detected_text.get_rect(center=(450, 400))
                     screen.blit(detected_text, detected_rect)
-                    
+
                     pygame.display.flip()
                     time.sleep(2)  # Show feedback longer
                     answered = True

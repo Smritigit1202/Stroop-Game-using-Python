@@ -37,7 +37,7 @@ def load_hindi_fonts():
     print("Attempting to load Hindi fonts...")
     
     # First try your specific Mangal.ttf path
-    your_mangal_path = r"C:\Users\abhis\OneDrive\Desktop\Game Making\STROOOP_GAME\Stroop-Game-using-Python\Mangal.ttf"
+    your_mangal_path = r"Mangal.ttf"
     
     if os.path.exists(your_mangal_path):
         try:

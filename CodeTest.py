@@ -67,7 +67,7 @@ def get_qr_from_camera(timeout=10):
 
 def game():
     score = 0
-    total_questions = 5
+    total_questions = 10
 
     for q in range(total_questions):
         word, word_color = random.choice(colors)
@@ -83,12 +83,12 @@ def game():
         correct = display_color_name.lower()
 
         if detected == correct:
-            show_text("✔ Correct!", (0, 200, 0))
-            print("✔ Correct!")
+            show_text("Correct!", (0, 200, 0))
+            print("Correct!")
             score += 1
         else:
-            show_text("✘ Incorrect or Timeout", (200, 0, 0))
-            print("✘ Incorrect or Timeout")
+            show_text(" Incorrect or Timeout", (200, 0, 0))
+            print("Incorrect or Timeout")
 
         time.sleep(2)
 

@@ -15,6 +15,9 @@ import subprocess
 import json
 import tempfile
 import wave
+import sys
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.detach(), encoding='utf-8')
 
 # Initialize pygame first
 pygame.init()
@@ -236,7 +239,7 @@ class AudioRecorder:
     def __init__(self):
         self.temp_dir = tempfile.mkdtemp()
         self.sample_rate = 16000
-        self.recording_duration = 3  # Fixed recording duration
+        self.recording_duration = 5  # Fixed recording duration
         
     def __del__(self):
         try:

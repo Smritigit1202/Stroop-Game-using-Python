@@ -79,7 +79,6 @@ https://github.com/user-attachments/assets/64073bd6-f111-4be3-8425-39c5328a3555
 
 
 
-## 🛠️ How to Run
 
 ## 📈 Clinical Relevance
 
@@ -90,14 +89,7 @@ These games may be used in:
 * **Visual/auditory attention tasks**
 * **Language comparison studies** (Hindi vs English response time)
 
----
 
-## 🛠 Future Additions
-
-* Export results to Excel/CSV
-* Add support for more Indian languages
-* Adaptive difficulty levels
-* Mobile-friendly UI
 
 ---
 

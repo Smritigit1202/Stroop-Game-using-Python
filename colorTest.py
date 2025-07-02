@@ -5,18 +5,22 @@ import time
 import os
 import numpy as np
 
+# Initialize pygame and camera
 pygame.init()
 screen = pygame.display.set_mode((800, 600))
 pygame.display.set_caption("Stroop Effect - Color Card Game")
 clock = pygame.time.Clock()
 
+# Fonts
 english_font = pygame.font.SysFont("Arial", 48)
 hindi_font = pygame.font.Font("mangal.ttf", 48)
 
+# Game data
 color_names_en = ["Red", "Green", "Blue"]
 color_names_hi = ["लाल", "हरा", "नीला"]
 rgb_values = [(255, 0, 0), (0, 255, 0), (0, 0, 255)]
 
+# Camera setup
 cap = cv2.VideoCapture(0)
 
 def generate_question():
@@ -26,11 +30,10 @@ def detect_color(frame):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     height, width, _ = frame.shape
 
-    # Wider detection window
     center_h = height // 2
     center_w = width // 2
-    center = hsv[height//2 - center_h//2 : height//2 + center_h//2,
-                 width//2 - center_w//2 : width//2 + center_w//2]
+    center = hsv[height//2 - center_h//4 : height//2 + center_h//4,
+                 width//2 - center_w//4 : width//2 + center_w//4]
 
     total_pixels = center.size / 3
 
@@ -43,14 +46,10 @@ def detect_color(frame):
     green_ratio = np.sum(green_mask > 0) / total_pixels
     blue_ratio = np.sum(blue_mask > 0) / total_pixels
 
-    # Debug print (optional)
-    # print(f"Red: {red_ratio:.3f}, Green: {green_ratio:.3f}, Blue: {blue_ratio:.3f}")
-
     result = -1
     label = "None"
     color = (100, 100, 100)
-
-    threshold = 0.12  # 12% of center region must be filled with the color
+    threshold = 0.08  # More forgiving
 
     if max(red_ratio, green_ratio, blue_ratio) >= threshold:
         if red_ratio >= green_ratio and red_ratio >= blue_ratio:
@@ -60,11 +59,10 @@ def detect_color(frame):
         else:
             result, label, color = 2, "Blue", (255, 0, 0)
 
-    # Draw overlay
     overlay = frame.copy()
     cv2.rectangle(overlay,
-                  (width//2 - center_w//2, height//2 - center_h//2),
-                  (width//2 + center_w//2, height//2 + center_h//2),
+                  (width//2 - center_w//4, height//2 - center_h//4),
+                  (width//2 + center_w//4, height//2 + center_h//4),
                   (255, 255, 255), 2)
     cv2.putText(overlay, f"Detecting: {label}", (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
@@ -90,7 +88,6 @@ def play_game(language='en'):
 
         start_time = time.time()
         timeout = 5
-        detected_color = -1
         answered = False
 
         while time.time() - start_time < timeout:
@@ -100,17 +97,17 @@ def play_game(language='en'):
             frame = cv2.flip(frame, 1)
             detected_color = detect_color(frame)
 
+            # 🎯 If the detected color matches the expected color, count it as answered
+            if detected_color == color_idx:
+                answered = True
+                break
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     cap.release()
                     cv2.destroyAllWindows()
                     exit()
-
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_SPACE]:
-                answered = True
-                break
 
             remaining = timeout - (time.time() - start_time)
             countdown = english_font.render(f"Time Left: {int(remaining)}s", True, (0, 0, 0))
@@ -125,7 +122,9 @@ def play_game(language='en'):
         end_time = time.time()
         total_time += (end_time - start_time)
 
-        if answered and detected_color == color_idx:
+        print(f"Expected: {color_idx}, Detected: {detected_color}")  # Debug
+
+        if answered:
             score += 1
             feedback = "Correct!"
             color = (0, 200, 0)
@@ -142,6 +141,7 @@ def play_game(language='en'):
         cv2.destroyAllWindows()
 
     return score, total_time
+
 
 def show_result(score_en, time_en, score_hi, time_hi):
     screen.fill((255, 255, 255))
@@ -190,8 +190,8 @@ def language_menu():
                 cap.release()
                 exit()
 
+# Main loop
 score_data = {}
-
 while True:
     mode = language_menu()
     if mode == 'en':

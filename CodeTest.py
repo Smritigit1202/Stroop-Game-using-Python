@@ -12,7 +12,10 @@ SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 700
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Stroop QR Challenge")
-
+results_data = {
+    "english": {"score": 0, "time": 0},
+    "hindi": {"score": 0, "time": 0}
+}
 # Fonts
 title_font = pygame.font.SysFont("Arial", 48, bold=True)
 large_font = pygame.font.SysFont("Arial", 64, bold=True)
@@ -411,7 +414,8 @@ def show_language_selection():
     
     english_button = Button(SCREEN_WIDTH//2 - 250, 350, 200, 80, "English", COLORS["blue"], font=large_font)
     hindi_button = Button(SCREEN_WIDTH//2 + 50, 350, 200, 80, "हिंदी", COLORS["green"], font=hindi_fonts['large'])
-    
+    compare_button = Button(SCREEN_WIDTH//2 - 100, 460, 200, 60, "Compare Results", COLORS["orange"], font=medium_font)
+
     running = True
     while running:
         for event in pygame.event.get():
@@ -424,7 +428,9 @@ def show_language_selection():
             if hindi_button.handle_event(event):
                 current_language = "hindi"
                 return "menu"
-        
+            if compare_button.handle_event(event):
+                return "compare"
+
         # Draw background
         draw_gradient_background(screen)
         
@@ -450,7 +456,8 @@ def show_language_selection():
         # Draw buttons
         english_button.draw(screen)
         hindi_button.draw(screen)
-        
+        compare_button.draw(screen)
+
         pygame.display.flip()
         clock.tick(60)
     
@@ -467,7 +474,8 @@ def show_menu():
                            COLORS["blue"], font=lang["fonts"]["medium"])
     quit_button = Button(SCREEN_WIDTH//2 - 120, 580, 240, 60, lang["ui"]["quit"], 
                         COLORS["red"], font=lang["fonts"]["medium"])
-    
+    compare_button = Button(SCREEN_WIDTH//2 - 120, 660, 240, 60, "Compare Results", COLORS["orange"], font=lang["fonts"]["medium"])
+
     running = True
     while running:
         for event in pygame.event.get():
@@ -515,6 +523,8 @@ def show_menu():
         
         # Draw buttons
         start_button.draw(screen)
+        compare_button.draw(screen)
+
         language_button.draw(screen)
         quit_button.draw(screen)
         
@@ -608,7 +618,7 @@ def show_final_score(score, total_questions):
             if play_again_button.handle_event(event):
                 return "play_again"
             if menu_button.handle_event(event):
-                return "menu"
+                return "language"
         
         draw_gradient_background(screen)
         
@@ -652,7 +662,7 @@ def show_final_score(score, total_questions):
         # Buttons - properly spaced
         play_again_button.draw(screen)
         menu_button.draw(screen)
-        
+       
         pygame.display.flip()
         clock.tick(60)
     
@@ -686,9 +696,75 @@ def get_qr_from_camera(timeout=7):
     cap.release()
     cv2.destroyAllWindows()
     return result
+def show_comparison_screen():
+    """Display comparison of English and Hindi results"""
+    clock = pygame.time.Clock()
+    
+    # Extract data
+    eng = results_data["english"]
+    hin = results_data["hindi"]
+
+    # Calculate efficiency (score/time)
+    def efficiency(score, time_taken):
+        return score / time_taken if time_taken > 0 else 0
+
+    eng_eff = efficiency(eng["score"], eng["time"])
+    hin_eff = efficiency(hin["score"], hin["time"])
+    
+    if eng_eff > hin_eff:
+        verdict = "English more efficient"
+    elif hin_eff > eng_eff:
+        verdict = "Hindi more efficient"
+    else:
+        verdict = "Equal efficiency"
+
+    lang = LANGUAGES[current_language]
+    back_button = Button(SCREEN_WIDTH//2 - 120, 550, 240, 60, lang["ui"]["main_menu"], COLORS["blue"], font=lang["fonts"]["medium"])
+    
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return "quit"
+            if back_button.handle_event(event):
+                return "language"
+        
+        draw_gradient_background(screen)
+        draw_card(screen, SCREEN_WIDTH//2 - 350, 80, 700, 400)
+
+        title_text = safe_render_text(title_font, "Comparison of Results", COLORS["text_primary"])
+        title_rect = title_text.get_rect(center=(SCREEN_WIDTH//2, 120))
+        screen.blit(title_text, title_rect)
+
+        info = [
+            ("", "English", "Hindi"),
+            ("Score", f"{eng['score']}", f"{hin['score']}"),
+            ("Time (s)", f"{eng['time']:.1f}", f"{hin['time']:.1f}"),
+            ("Efficiency", f"{eng_eff:.2f}", f"{hin_eff:.2f}")
+        ]
+
+        for i, (label, val1, val2) in enumerate(info):
+            y = 180 + i * 50
+            label_text = safe_render_text(medium_font, label, COLORS["text_primary"])
+            eng_text = safe_render_text(medium_font, val1, COLORS["text_secondary"])
+            hin_text = safe_render_text(medium_font, val2, COLORS["text_secondary"])
+            screen.blit(label_text, (SCREEN_WIDTH//2 - 250, y))
+            screen.blit(eng_text, (SCREEN_WIDTH//2, y))
+            screen.blit(hin_text, (SCREEN_WIDTH//2 + 150, y))
+
+        verdict_text = safe_render_text(medium_font, f"Verdict: {verdict}", COLORS["green"])
+        verdict_rect = verdict_text.get_rect(center=(SCREEN_WIDTH//2, 430))
+        screen.blit(verdict_text, verdict_rect)
+
+        back_button.draw(screen)
+        pygame.display.flip()
+        clock.tick(60)
+
+    return "menu"
 
 def game():
     """Main game function with enhanced UI"""
+    game_start_time = time.time()
     lang = LANGUAGES[current_language]
     score = 0
     total_questions = 10
@@ -705,33 +781,40 @@ def game():
         timeout = 7
         answered = False
         
-        while not answered and (time.time() - start_time) < timeout:
+                # Start timer and camera
+        cap = cv2.VideoCapture(0)
+        detector = cv2.QRCodeDetector()
+        start_time = time.time()
+        detected_qr = None
+
+        while (time.time() - start_time) < timeout:
             # Handle pygame events
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
+                    cap.release()
                     pygame.quit()
                     sys.exit()
             
-            # Calculate remaining time
+            # Time tracking
             elapsed = time.time() - start_time
             time_left = max(0, timeout - elapsed)
             
             # Show game screen
             show_game_screen(word, display_color_rgb, score, q, total_questions, time_left)
-            
-            # Small delay to prevent excessive CPU usage
+
+            # Read frame from camera
+            ret, frame = cap.read()
+            if ret:
+                val, points, _ = detector.detectAndDecode(frame)
+                if val:
+                    detected_qr = val.strip().lower()
+                    break  # QR found early → break
+
             pygame.time.wait(50)
-            
-            # Check if time is up
-            if time_left <= 0:
-                break
-        
-        # Get QR code from camera
-        print(f"Question {q}: Word='{word}', DisplayColor='{display_color_name}'")
-        print(f"Expected QR: '{COLOR_QR_MAPPING.get(display_color_name, 'unknown')}'")
-        
-        detected_qr = get_qr_from_camera(timeout=max(1, int(time_left)))
-        
+
+        cap.release()
+        cv2.destroyAllWindows()
+
         # Check answer
         expected_color = COLOR_QR_MAPPING.get(display_color_name.lower(), "")
         is_correct = False
@@ -751,7 +834,14 @@ def game():
         time.sleep(1.5)
     
     # Show final score
+    end_time = time.time()
+    total_time = end_time - game_start_time  # You’ll add this line above too
+    results_data[current_language]["score"] = score
+    results_data[current_language]["time"] = total_time
+
     return show_final_score(score, total_questions)
+
+
 
 def main():
     """Main function to handle game flow"""
@@ -764,6 +854,9 @@ def main():
             state = show_menu()
         elif state == "start":
             state = game()
+        elif state == "compare":
+             state = show_comparison_screen()
+
         elif state == "play_again":
             state = game()
         elif state == "quit":

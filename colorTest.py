@@ -151,8 +151,10 @@ def show_result(score_en, time_en, score_hi, time_hi):
     winner = "English" if eff_en > eff_hi else "Hindi"
 
     lines = [
-        f"English - Score: {score_en}, Time: {time_en:.2f}s, Efficiency: {eff_en:.2f}",
-        f"Hindi   - Score: {score_hi}, Time: {time_hi:.2f}s, Efficiency: {eff_hi:.2f}",
+        f"English - Score: {score_en}, Time: {time_en:.2f}s",
+        f"Hindi   - Score: {score_hi}, Time: {time_hi:.2f}s",
+        f"Engish Efficiency: {eff_en:.2f}",
+        f"Hindi Efficiency: {eff_hi:.2f}",
         f"Better Performance: {winner}"
     ]
 

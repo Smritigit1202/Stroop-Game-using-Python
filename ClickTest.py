@@ -108,7 +108,7 @@ def drawMenu(screen, background, playEnglishBtn, playHindiBtn, resultsBtn):
     titleText = titleFont.render("Stroop Effect Game", True, (75, 0, 130))
     screen.blit(titleText, (60, 50))
     instructionFont = get_font("English", 32)
-    instructionText = instructionFont.render("Made by Smriti Aggarwal", True, (220, 20, 60))
+    instructionText = instructionFont.render("Let's play", True, (220, 20, 60))
     screen.blit(instructionText, (100, 450))
     pygame.display.update()
 

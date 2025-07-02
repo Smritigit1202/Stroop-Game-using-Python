@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Stroop Effect Game - Fixed Audio Input Timing
-This version fixes the audio input timing issues for proper user experience
-"""
+
 
 import pygame
 import random
@@ -103,6 +100,7 @@ LANGUAGES = {
             'restart': 'Press SPACE to play again or ESC to quit',
             'start_quit': 'Press SPACE to start or ESC to quit',
             'language_change': 'Press L to change language',
+            'compare': 'Press C to compare results',
             'question': 'Question',
             'score': 'Score',
             'listening': 'Listening... Speak now!',
@@ -135,6 +133,7 @@ LANGUAGES = {
             'restart': 'फिर से खेलने के लिए SPACE दबाएं या ESC दबाएं',
             'start_quit': 'शुरू करने के लिए SPACE दबाएं या बाहर निकलने के लिए ESC',
             'language_change': 'भाषा बदलने के लिए L दबाएं',
+            'compare': 'Press C to compare results',
             'question': 'प्रश्न',
             'score': 'स्कोर',
             'listening': 'सुन रहे हैं... अब बोलें!',
@@ -152,8 +151,8 @@ current_language = 'english'
 colors = LANGUAGES[current_language]['colors']
 ui_text = LANGUAGES[current_language]['ui']
 language_stats = {
-    'english': {'score': 0, 'times': [], 'played': False},
-    'hindi': {'score': 0, 'times': [], 'played': False}
+    'english': {'score': 0, 'times': [], 'played': False, 'efficiency': 0, 'stroop_conflicts': [], 'non_conflicts': []},
+    'hindi': {'score': 0, 'times': [], 'played': False, 'efficiency': 0, 'stroop_conflicts': [], 'non_conflicts': []}
 }
 
 # Audio setup
@@ -869,52 +868,91 @@ def get_color_name_and_rgb(color_data):
 
 def compare_language_stats():
     screen.fill((255, 255, 255))
-    title = render_text("Comparison of Languages", 'large', (0, 0, 0))
-    screen.blit(title, title.get_rect(center=(450, 60)))
+    title = render_text("Language Performance Comparison", 'large', (0, 0, 0))
+    screen.blit(title, title.get_rect(center=(450, 50)))
 
     for idx, lang in enumerate(['english', 'hindi']):
-        y_offset = 150 + idx * 200
+        x_offset = 50 + idx * 400  # Side by side layout
         lang_stats = language_stats[lang]
         
         # Language name
         lang_name = "English" if lang == 'english' else "Hindi (हिंदी)"
         lang_text = render_text(lang_name, 'medium', (0, 0, 200))
-        screen.blit(lang_text, (100, y_offset))
+        screen.blit(lang_text, (x_offset, 120))
         
         if lang_stats['played']:
-            # Score
+            # Basic stats
             score_text = render_text(f"Score: {lang_stats['score']}/5", 'small', (0, 0, 0))
-            screen.blit(score_text, (100, y_offset + 40))
+            screen.blit(score_text, (x_offset, 160))
             
-            # Accuracy
             accuracy = (lang_stats['score'] / 5) * 100
             accuracy_text = render_text(f"Accuracy: {accuracy:.1f}%", 'small', (0, 0, 0))
-            screen.blit(accuracy_text, (100, y_offset + 70))
+            screen.blit(accuracy_text, (x_offset, 190))
             
             # Average response time
             if lang_stats['times']:
                 avg_time = sum(lang_stats['times']) / len(lang_stats['times'])
                 time_text = render_text(f"Avg Time: {avg_time:.2f}s", 'small', (0, 0, 0))
-                screen.blit(time_text, (100, y_offset + 100))
+                screen.blit(time_text, (x_offset, 220))
+                
+                # Efficiency (score per second)
+                efficiency = lang_stats['efficiency']
+                eff_text = render_text(f"Efficiency: {efficiency:.2f}", 'small', (0, 100, 0))
+                screen.blit(eff_text, (x_offset, 250))
             
-            # Performance indicator
-            if lang_stats['score'] >= 4:
-                perf_text = render_text("Excellent!", 'small', (0, 150, 0))
-            elif lang_stats['score'] >= 3:
-                perf_text = render_text("Good", 'small', (0, 100, 0))
-            elif lang_stats['score'] >= 2:
-                perf_text = render_text("Fair", 'small', (200, 100, 0))
-            else:
-                perf_text = render_text("Needs Practice", 'small', (200, 0, 0))
+            # Stroop Effect Analysis
+            if lang_stats['stroop_conflicts'] and lang_stats['non_conflicts']:
+                conflict_avg = sum(lang_stats['stroop_conflicts']) / len(lang_stats['stroop_conflicts'])
+                non_conflict_avg = sum(lang_stats['non_conflicts']) / len(lang_stats['non_conflicts'])
+                stroop_effect = conflict_avg - non_conflict_avg
+                
+                stroop_text = render_text(f"Stroop Effect: +{stroop_effect:.2f}s", 'small', (200, 0, 0))
+                screen.blit(stroop_text, (x_offset, 280))
+                
+                conflict_text = render_text(f"Conflict Time: {conflict_avg:.2f}s", 'small', (150, 0, 0))
+                screen.blit(conflict_text, (x_offset, 310))
+                
+                non_conflict_text = render_text(f"Non-conflict: {non_conflict_avg:.2f}s", 'small', (0, 150, 0))
+                screen.blit(non_conflict_text, (x_offset, 340))
             
-            screen.blit(perf_text, (100, y_offset + 130))
+            # Performance bar (visual representation)
+            bar_width = int(accuracy * 2)  # Max 200 pixels for 100%
+            pygame.draw.rect(screen, (0, 200, 0), (x_offset, 370, bar_width, 20))
+            pygame.draw.rect(screen, (0, 0, 0), (x_offset, 370, 200, 20), 2)
+            
         else:
             not_played_text = render_text("Not played yet", 'small', (100, 100, 100))
-            screen.blit(not_played_text, (100, y_offset + 40))
+            screen.blit(not_played_text, (x_offset, 160))
+    
+    # Overall comparison
+    if language_stats['english']['played'] and language_stats['hindi']['played']:
+        comparison_y = 450
+        
+        # Better language recommendation
+        eng_eff = language_stats['english']['efficiency']
+        hin_eff = language_stats['hindi']['efficiency']
+        
+        if eng_eff > hin_eff:
+            better_lang = "English"
+            color = (0, 150, 0)
+        elif hin_eff > eng_eff:
+            better_lang = "Hindi"
+            color = (0, 150, 0)
+        else:
+            better_lang = "Both Equal"
+            color = (0, 0, 150)
+        
+        recommendation = render_text(f"Better Performance: {better_lang}", 'medium', color)
+        screen.blit(recommendation, recommendation.get_rect(center=(450, comparison_y)))
+        
+        # Efficiency difference
+        eff_diff = abs(eng_eff - hin_eff)
+        diff_text = render_text(f"Efficiency Difference: {eff_diff:.2f}", 'small', (0, 0, 0))
+        screen.blit(diff_text, diff_text.get_rect(center=(450, comparison_y + 40)))
     
     # Instructions
     instruction_text = render_text("Press SPACE to continue or ESC to quit", 'small', (0, 0, 0))
-    screen.blit(instruction_text, (250, 600))
+    screen.blit(instruction_text, instruction_text.get_rect(center=(450, 600)))
     
     pygame.display.flip()
     
@@ -953,7 +991,7 @@ def play_game():
         # Choose random word and color
         word_index = random.randint(0, len(colors) - 1)
         color_index = random.randint(0, len(colors) - 1)
-        
+        is_stroop_conflict = (word_index != color_index)  # True if word and color don't match
         word_name, _ = get_color_name_and_rgb(colors[word_index])
         _, correct_color_rgb = get_color_name_and_rgb(colors[color_index])
         
@@ -992,7 +1030,11 @@ def play_game():
         # Calculate response time
         response_time = time.time() - start_time
         response_times.append(response_time)
-        
+        # Track stroop conflicts vs non-conflicts
+        if is_stroop_conflict:
+           language_stats[current_language]['stroop_conflicts'].append(response_time)
+        else:
+            language_stats[current_language]['non_conflicts'].append(response_time)
         # Handle quit
         if message == "quit":
             return False
@@ -1044,7 +1086,10 @@ def play_game():
     language_stats[current_language]['score'] = score
     language_stats[current_language]['times'] = response_times
     language_stats[current_language]['played'] = True
-    
+    # Calculate efficiency (score per second)
+    if response_times:
+      avg_time = sum(response_times) / len(response_times)
+      language_stats[current_language]['efficiency'] = score / avg_time if avg_time > 0 else 0
     # Show final results
     screen.fill((255, 255, 255))
     
@@ -1070,13 +1115,11 @@ def play_game():
     lang_change_text = render_text(ui_text['language_change'], 'small', (0, 0, 0))
     lang_change_rect = lang_change_text.get_rect(center=(450, 430))
     screen.blit(lang_change_text, lang_change_rect)
-    
-    # Show comparison option if both languages played
-    if language_stats['english']['played'] and language_stats['hindi']['played']:
-        compare_text = render_text("Press C to compare languages", 'small', (0, 100, 0))
-        compare_rect = compare_text.get_rect(center=(450, 460))
-        screen.blit(compare_text, compare_rect)
-    
+
+# Always show comparison option
+    compare_text = render_text("Press C to compare languages", 'small', (0, 100, 0))
+    compare_rect = compare_text.get_rect(center=(450, 460))
+    screen.blit(compare_text, compare_rect)
     pygame.display.flip()
     
     # Wait for user input
@@ -1096,10 +1139,9 @@ def play_game():
                     update_language(new_lang)
                     return True
                 elif event.key == pygame.K_c:
-                    if language_stats['english']['played'] and language_stats['hindi']['played']:
-                        if not compare_language_stats():
+                    if not compare_language_stats():
                             return False
-                        return True
+                    return True
         clock.tick(60)
     
     return True
@@ -1157,10 +1199,9 @@ def show_menu():
         screen.blit(method_info_text, method_info_rect)
         
         # Show comparison option if both languages played
-        if language_stats['english']['played'] and language_stats['hindi']['played']:
-            compare_text = render_text("Press C to compare languages", 'small', (0, 150, 0))
-            compare_rect = compare_text.get_rect(center=(450, 520))
-            screen.blit(compare_text, compare_rect)
+        compare_text = render_text("Press C to compare languages", 'small', (0, 150, 0))
+        compare_rect = compare_text.get_rect(center=(450, 520))
+        screen.blit(compare_text, compare_rect)
         
         pygame.display.flip()
         
@@ -1183,8 +1224,7 @@ def show_menu():
                     if result is None:
                         return False
                 elif event.key == pygame.K_c:
-                    if language_stats['english']['played'] and language_stats['hindi']['played']:
-                        if not compare_language_stats():
+                    if not compare_language_stats():
                             return False
         
         clock.tick(60)

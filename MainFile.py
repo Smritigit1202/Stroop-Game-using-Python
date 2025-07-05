@@ -12,7 +12,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.detach(), encoding='utf-8')
 
 # Import input method modules
 try:
-    from voice_input import VoiceInput
+    from audio_input import VoiceInput
     VOICE_AVAILABLE = True
 except ImportError:
     VOICE_AVAILABLE = False
@@ -33,14 +33,14 @@ except ImportError:
     print("Key input not available")
 
 try:
-    from gesture_input import GestureInput
+    from finger_input import GestureInput
     GESTURE_AVAILABLE = True
 except ImportError:
     GESTURE_AVAILABLE = False
     print("Gesture input not available")
 
 try:
-    from camera_input import CameraInput
+    from color_input import CameraInput
     CAMERA_AVAILABLE = True
 except ImportError:
     CAMERA_AVAILABLE = False

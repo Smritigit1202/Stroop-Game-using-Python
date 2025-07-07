@@ -12,7 +12,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.detach(), encoding='utf-8')
 
 # Import input method modules
 try:
-    from audio_input import VoiceInput
+    from audio_input import AudioRecoVorder
     VOICE_AVAILABLE = True
 except ImportError:
     VOICE_AVAILABLE = False
@@ -171,7 +171,7 @@ ui_text = LANGUAGES[current_language]['ui']
 # Initialize input handlers
 input_handlers = {}
 if VOICE_AVAILABLE:
-    input_handlers[InputMethod.VOICE] = VoiceInput()
+    input_handlers[InputMethod.VOICE] = AudioRecoVorder()
 if CLICK_AVAILABLE:
     input_handlers[InputMethod.CLICK] = ClickInput()
 if KEY_AVAILABLE:

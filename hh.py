@@ -1,5 +1,3 @@
-
-
 import pygame
 import random
 import time
@@ -80,10 +78,13 @@ audio_methods['direct_pyaudio'] = audio_methods.get('pyaudio', False)
 if audio_methods['direct_pyaudio']:
     print("  Method: Direct PyAudio - Available")
 
-# Initialize speech recognizer
+# Initialize speech recognizer with better settings
 recognizer = sr.Recognizer()
-recognizer.pause_threshold = 0.5
-recognizer.energy_threshold = 300
+recognizer.pause_threshold = 0.8  # Longer pause before considering speech ended
+recognizer.energy_threshold = 200  # Lower threshold for quieter speech
+recognizer.dynamic_energy_threshold = True  # Automatically adjust threshold
+recognizer.dynamic_energy_adjustment_damping = 0.15
+recognizer.dynamic_energy_ratio = 1.5
 
 class AudioRecoVorder:
     """Audio recording class with multiple fallback methods"""
@@ -91,7 +92,10 @@ class AudioRecoVorder:
     def __init__(self):
         self.temp_dir = tempfile.mkdtemp()
         self.sample_rate = 16000
-        self.recording_duration = 5  # Fixed recording duration
+        self.recording_duration = 10  # Extended to 10 seconds as requested
+        self.microphone = None
+        self.recognizer = recognizer
+        self.init_microphone()
         
     def __del__(self):
         try:
@@ -100,6 +104,66 @@ class AudioRecoVorder:
         except:
             pass
 
+    def init_microphone(self):
+        """Initialize microphone with proper settings"""
+        try:
+            self.microphone = sr.Microphone(
+                sample_rate=self.sample_rate,
+                chunk_size=1024
+            )
+            # Calibrate microphone
+            with self.microphone as source:
+                print("Calibrating microphone for ambient noise...")
+                self.recognizer.adjust_for_ambient_noise(source, duration=1)
+                print(f"Energy threshold set to: {self.recognizer.energy_threshold}")
+        except Exception as e:
+            print(f"Warning: Could not initialize microphone: {e}")
+            self.microphone = None
+
+    def show_listening_screen(self, screen, ui_text, fonts):
+        """Show listening indicator on screen"""
+        screen.fill((255, 255, 255))
+        text = fonts['large'].render(ui_text.get('listening', 'Listening...'), True, (0, 100, 200))
+        text_rect = text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
+        screen.blit(text, text_rect)
+        pygame.display.flip()
+
+    def show_recording_screen(self, screen, ui_text, fonts):
+        """Show recording indicator on screen"""
+        screen.fill((255, 100, 100))
+        text = fonts['large'].render(ui_text.get('recording', 'Recording...'), True, (255, 255, 255))
+        text_rect = text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
+        screen.blit(text, text_rect)
+        pygame.display.flip()
+
+    def show_processing_screen(self, screen, ui_text, fonts):
+        """Show processing indicator on screen"""
+        screen.fill((100, 100, 255))
+        text = fonts['large'].render(ui_text.get('processing', 'Processing...'), True, (255, 255, 255))
+        text_rect = text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
+        screen.blit(text, text_rect)
+        pygame.display.flip()
+
+    def match_color(self, text, colors):
+        """Match recognized text to color names"""
+        text_lower = text.lower().strip()
+        
+        for i, color_data in enumerate(colors):
+            if isinstance(color_data, (list, tuple)):
+                color_name = color_data[0].lower()
+                # Check for exact match or partial match
+                if color_name in text_lower or text_lower in color_name:
+                    return i
+                # Check alternatives if available
+                if len(color_data) > 2 and isinstance(color_data[2], list):
+                    for alt in color_data[2]:
+                        if alt.lower() in text_lower or text_lower in alt.lower():
+                            return i
+            else:
+                # Simple string color
+                if isinstance(color_data, str) and color_data.lower() in text_lower:
+                    return i
+        return None
 
     def get_input(self, colors, screen, ui_text, fonts):
         """
@@ -107,43 +171,82 @@ class AudioRecoVorder:
         Returns: {'success': bool, 'color_index': int or None, 'message': str}
         """
         try:
+            if not self.microphone:
+                self.init_microphone()
+                if not self.microphone:
+                    return {'success': False, 'color_index': None, 'message': 'microphone_init_failed'}
+
             # Show listening indicator
             self.show_listening_screen(screen, ui_text, fonts)
             
             # Listen for audio
             with self.microphone as source:
+                # Brief ambient noise adjustment
+                self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                
                 # Show recording status
                 self.show_recording_screen(screen, ui_text, fonts)
                 
-                # Record audio with timeout
+                # Record audio with longer timeout and phrase limit
                 try:
-                    audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=3)
+                    print(f"Listening for up to {self.recording_duration} seconds...")
+                    audio = self.recognizer.listen(
+                        source, 
+                        timeout=2,  # Wait up to 2 seconds for speech to start
+                        phrase_time_limit=self.recording_duration  # Allow up to 10 seconds of speech
+                    )
                 except sr.WaitTimeoutError:
                     return {'success': False, 'color_index': None, 'message': 'timeout'}
             
             # Show processing status
             self.show_processing_screen(screen, ui_text, fonts)
             
-            # Recognize speech
-            try:
-                # Try Google first, then fallback to offline
-                text = self.recognizer.recognize_google(audio, language='en-US').lower()
-            except (sr.UnknownValueError, sr.RequestError):
-                try:
-                    # Fallback to offline recognition
-                    text = self.recognizer.recognize_sphinx(audio).lower()
-                except:
-                    return {'success': False, 'color_index': None, 'message': 'recognition_failed'}
+            # Recognize speech with multiple attempts
+            recognized_text = None
             
-            print(f"Recognized: '{text}'")
+            # Try different recognition methods
+            recognition_methods = [
+                ('google', 'en-US'),
+                ('google', 'en-IN'),
+                ('google', 'en-GB'),
+            ]
+            
+            for method, language in recognition_methods:
+                try:
+                    if method == 'google':
+                        recognized_text = self.recognizer.recognize_google(
+                            audio, 
+                            language=language,
+                            show_all=False
+                        )
+                    elif method == 'sphinx':
+                        recognized_text = self.recognizer.recognize_sphinx(audio)
+                    
+                    if recognized_text:
+                        print(f"Recognized with {method} ({language}): '{recognized_text}'")
+                        break
+                        
+                except sr.UnknownValueError:
+                    continue
+                except sr.RequestError as e:
+                    print(f"Recognition service error: {e}")
+                    continue
+                except Exception as e:
+                    print(f"Recognition error: {e}")
+                    continue
+            
+            if not recognized_text:
+                return {'success': False, 'color_index': None, 'message': 'recognition_failed'}
+            
+            print(f"Final recognized text: '{recognized_text}'")
             
             # Match recognized text to colors
-            color_index = self.match_color(text, colors)
+            color_index = self.match_color(recognized_text, colors)
             
             if color_index is not None:
-                return {'success': True, 'color_index': color_index, 'message': f'recognized_{text}'}
+                return {'success': True, 'color_index': color_index, 'message': f'recognized_{recognized_text}'}
             else:
-                return {'success': False, 'color_index': None, 'message': f'no_match_{text}'}
+                return {'success': False, 'color_index': None, 'message': f'no_match_{recognized_text}'}
                 
         except KeyboardInterrupt:
             return {'success': False, 'color_index': None, 'message': 'quit'}
@@ -167,8 +270,8 @@ class AudioRecoVorder:
                 print("SoundDevice: No audio data recorded")
                 return None
             
-            # Check if recording is not just silence
-            if np.max(np.abs(recording)) < 100:  # Very low threshold
+            # Check if recording is not just silence (more lenient threshold)
+            if np.max(np.abs(recording)) < 50:  # Reduced threshold
                 print("SoundDevice: Recording appears to be silence")
                 return None
             
@@ -180,6 +283,8 @@ class AudioRecoVorder:
             if not os.path.exists(temp_file) or os.path.getsize(temp_file) < 1000:
                 print("SoundDevice: Audio file too small or doesn't exist")
                 return None
+            
+            print(f"SoundDevice: Created audio file of {os.path.getsize(temp_file)} bytes")
             
             # Read and return audio data
             with sr.AudioFile(temp_file) as source:
@@ -199,19 +304,24 @@ class AudioRecoVorder:
             print(f"Recording with PyAudio for {self.recording_duration} seconds...")
             
             # Create microphone instance with specific settings
-            mic = sr.Microphone(sample_rate=self.sample_rate, chunk_size=1024)
+            if not self.microphone:
+                self.init_microphone()
             
-            with mic as source:
-                print("Adjusting for ambient noise...")
+            if not self.microphone:
+                print("PyAudio: No microphone available")
+                return None
+            
+            with self.microphone as source:
+                print("PyAudio: Adjusting for ambient noise...")
                 recognizer.adjust_for_ambient_noise(source, duration=0.5)
-                print(f"Energy threshold: {recognizer.energy_threshold}")
+                print(f"PyAudio: Energy threshold: {recognizer.energy_threshold}")
                 
-                print("Recording...")
-                # Use listen with timeout and phrase_time_limit
+                print("PyAudio: Recording...")
+                # Use listen with longer timeout and phrase_time_limit
                 audio = recognizer.listen(
                     source, 
-                    timeout=1,  # Wait 1 second for speech to start
-                    phrase_time_limit=self.recording_duration  # Record for exactly this duration
+                    timeout=2,  # Wait 2 seconds for speech to start
+                    phrase_time_limit=self.recording_duration  # Record for up to 10 seconds
                 )
                 return audio
                 
@@ -235,37 +345,52 @@ class AudioRecoVorder:
             
             # Try different system commands based on OS
             if sys.platform.startswith('win'):
-                # Windows - use PowerShell with better audio recording
-                cmd = f'powershell -Command "$duration = {self.recording_duration}; Add-Type -TypeDefinition \'using System; using System.Runtime.InteropServices; public class AudioRecorder {{ [DllImport(\\"winmm.dll\\")] public static extern int mciSendString(string lpstrCommand, System.Text.StringBuilder lpstrReturnString, int uReturnLength, IntPtr hWndCallback); }}\'; $sb = New-Object System.Text.StringBuilder(255); [AudioRecorder]::mciSendString(\\"open new type waveaudio alias capture\\", $sb, $sb.Capacity, 0); [AudioRecorder]::mciSendString(\\"set capture time format ms bitspersample 16 channels 1 samplespersec {self.sample_rate}\\", $sb, $sb.Capacity, 0); [AudioRecorder]::mciSendString(\\"record capture\\", $sb, $sb.Capacity, 0); Start-Sleep -Seconds $duration; [AudioRecorder]::mciSendString(\\"save capture {temp_file}\\", $sb, $sb.Capacity, 0); [AudioRecorder]::mciSendString(\\"close capture\\", $sb, $sb.Capacity, 0)"'
+                # Windows - use SoundRecorder or PowerShell
+                cmd = f'powershell -Command "Add-Type -AssemblyName System.Speech; $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer; $synth.SetOutputToWaveFile(\'{temp_file}\'); $synth.Speak(\' \'); $synth.Dispose()"'
+                # Alternative: Use ffmpeg if available
+                cmd_ffmpeg = f'ffmpeg -f dshow -i audio="Microphone" -t {self.recording_duration} -ar {self.sample_rate} -ac 1 "{temp_file}"'
+                
+                try:
+                    result = subprocess.run(cmd_ffmpeg, shell=True, capture_output=True, timeout=self.recording_duration+5)
+                    if result.returncode == 0:
+                        cmd = cmd_ffmpeg
+                except:
+                    # Fallback to basic recording
+                    cmd = f'echo "Windows system recording not fully implemented" && timeout {self.recording_duration}'
                 
             elif sys.platform.startswith('darwin'):  # macOS
                 # Use sox if available, otherwise try afplay/afrecord
-                cmd = f'sox -d -r {self.sample_rate} -c 1 -b 16 {temp_file} trim 0 {self.recording_duration}'
+                cmd = f'sox -d -r {self.sample_rate} -c 1 -b 16 "{temp_file}" trim 0 {self.recording_duration}'
                 if subprocess.run(['which', 'sox'], capture_output=True).returncode != 0:
-                    # Fallback to afplay/afrecord
-                    cmd = f'rec -r {self.sample_rate} -c 1 -b 16 {temp_file} trim 0 {self.recording_duration}'
+                    # Fallback to ffmpeg
+                    cmd = f'ffmpeg -f avfoundation -i ":0" -t {self.recording_duration} -ar {self.sample_rate} -ac 1 "{temp_file}"'
                 
             else:  # Linux
                 # Try multiple Linux audio recording methods
                 commands_to_try = [
-                    f'arecord -f S16_LE -r {self.sample_rate} -c 1 -d {self.recording_duration} {temp_file}',
-                    f'sox -d -r {self.sample_rate} -c 1 -b 16 {temp_file} trim 0 {self.recording_duration}',
-                    f'parecord --format=s16le --rate={self.sample_rate} --channels=1 --record-time={self.recording_duration} {temp_file}'
+                    f'arecord -f S16_LE -r {self.sample_rate} -c 1 -d {self.recording_duration} "{temp_file}"',
+                    f'sox -d -r {self.sample_rate} -c 1 -b 16 "{temp_file}" trim 0 {self.recording_duration}',
+                    f'ffmpeg -f alsa -i default -t {self.recording_duration} -ar {self.sample_rate} -ac 1 "{temp_file}"',
+                    f'parecord --format=s16le --rate={self.sample_rate} --channels=1 --record-time={self.recording_duration} "{temp_file}"'
                 ]
                 
                 for cmd in commands_to_try:
                     try:
+                        print(f"Trying: {cmd}")
                         result = subprocess.run(cmd, shell=True, capture_output=True, timeout=self.recording_duration+5)
                         if result.returncode == 0 and os.path.exists(temp_file) and os.path.getsize(temp_file) > 1000:
+                            print(f"Success with: {cmd}")
                             break
-                    except:
+                    except Exception as e:
+                        print(f"Command failed: {e}")
                         continue
                 else:
                     print("All Linux recording commands failed")
                     return None
             
-            if not (sys.platform.startswith('linux')):  # For Windows and macOS
+            if not sys.platform.startswith('linux'):  # For Windows and macOS
                 try:
+                    print(f"Executing: {cmd}")
                     result = subprocess.run(cmd, shell=True, capture_output=True, timeout=self.recording_duration+5)
                     if result.returncode != 0:
                         print(f"System command failed with return code: {result.returncode}")
@@ -322,12 +447,27 @@ class AudioRecoVorder:
             # Initialize PyAudio
             audio_interface = pyaudio.PyAudio()
             
+            # Find default input device
+            default_device = None
+            for i in range(audio_interface.get_device_count()):
+                device_info = audio_interface.get_device_info_by_index(i)
+                if device_info['maxInputChannels'] > 0:
+                    default_device = i
+                    print(f"Using audio device: {device_info['name']}")
+                    break
+            
+            if default_device is None:
+                print("No input device found")
+                audio_interface.terminate()
+                return None
+            
             # Open stream
             stream = audio_interface.open(
                 format=FORMAT,
                 channels=CHANNELS,
                 rate=RATE,
                 input=True,
+                input_device_index=default_device,
                 frames_per_buffer=CHUNK
             )
             
@@ -336,8 +476,12 @@ class AudioRecoVorder:
             
             # Record for specified duration
             for i in range(0, int(RATE / CHUNK * self.recording_duration)):
-                data = stream.read(CHUNK)
-                frames.append(data)
+                try:
+                    data = stream.read(CHUNK, exception_on_overflow=False)
+                    frames.append(data)
+                except Exception as e:
+                    print(f"Error reading audio chunk: {e}")
+                    break
             
             print("Finished recording")
             
@@ -345,6 +489,10 @@ class AudioRecoVorder:
             stream.stop_stream()
             stream.close()
             audio_interface.terminate()
+            
+            if not frames:
+                print("No audio data recorded")
+                return None
             
             # Save to temporary file
             temp_file = os.path.join(self.temp_dir, "temp_direct_pyaudio.wav")
@@ -359,6 +507,8 @@ class AudioRecoVorder:
             if not os.path.exists(temp_file) or os.path.getsize(temp_file) < 1000:
                 print("Direct PyAudio: File too small or doesn't exist")
                 return None
+            
+            print(f"Direct PyAudio: Created file of {os.path.getsize(temp_file)} bytes")
             
             # Read and return audio data
             with sr.AudioFile(temp_file) as source:
@@ -375,7 +525,7 @@ class AudioRecoVorder:
             methods_to_try = [method]
         else:
             # Try methods in order of reliability
-            methods_to_try = ['sounddevice', 'pyaudio', 'direct_pyaudio', 'system']
+            methods_to_try = ['pyaudio', 'sounddevice', 'direct_pyaudio', 'system']
         
         for method_name in methods_to_try:
             if method_name == 'direct_pyaudio':
@@ -436,7 +586,11 @@ def match_color_english(spoken_text, colors):
     spoken_lower = spoken_text.lower().strip()
     
     for i, color_data in enumerate(colors):
-        color_name = color_data[0]
+        if isinstance(color_data, (list, tuple)):
+            color_name = color_data[0]
+        else:
+            color_name = str(color_data)
+        
         if color_name.lower() in spoken_lower or spoken_lower in color_name.lower():
             print(f"Matched '{spoken_text}' with '{color_name}'")
             return i
@@ -531,16 +685,22 @@ def get_voice_input_with_visual_feedback(screen, ui_text, current_language, colo
     
     clock = pygame.time.Clock()
     
-    # Phase 1: Get ready (1 second)
+    # Phase 1: Get ready (2 seconds)
     screen.fill((255, 255, 255))
-    ready_text = pygame.font.Font(None, 48).render(ui_text['get_ready'], True, (255, 100, 0))
+    ready_text = pygame.font.Font(None, 48).render(ui_text.get('get_ready', 'Get Ready!'), True, (255, 100, 0))
     ready_rect = ready_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
     screen.blit(ready_text, ready_rect)
+    
+    # Show countdown
+    countdown_text = pygame.font.Font(None, 32).render(f"Recording will start in 2 seconds...", True, (0, 0, 0))
+    countdown_rect = countdown_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2 + 60))
+    screen.blit(countdown_text, countdown_rect)
+    
     pygame.display.flip()
     
     # Handle events during get ready
     start_time = time.time()
-    while time.time() - start_time < 1.0:
+    while time.time() - start_time < 2.0:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return None, "quit"
@@ -562,18 +722,23 @@ def get_voice_input_with_visual_feedback(screen, ui_text, current_language, colo
     
     # Visual countdown during recording
     while time.time() - recording_start < audio_recorder.recording_duration:
-        screen.fill((255, 255, 255))
+        screen.fill((255, 100, 100))
         
         # Show recording indicator
-        recording_text = pygame.font.Font(None, 48).render(ui_text['recording'], True, (255, 0, 0))
+        recording_text = pygame.font.Font(None, 48).render(ui_text.get('recording', 'Recording...'), True, (255, 255, 255))
         recording_rect = recording_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2 - 50))
         screen.blit(recording_text, recording_rect)
         
         # Show countdown
         remaining = audio_recorder.recording_duration - (time.time() - recording_start)
-        countdown_text = pygame.font.Font(None, 32).render(f"{remaining:.1f}s", True, (0, 0, 200))
+        countdown_text = pygame.font.Font(None, 32).render(f"Time remaining: {remaining:.1f}s", True, (255, 255, 255))
         countdown_rect = countdown_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2 + 50))
         screen.blit(countdown_text, countdown_rect)
+        
+        # Show instruction
+        instruction_text = pygame.font.Font(None, 24).render("Say the COLOR NAME of the word shown", True, (255, 255, 255))
+        instruction_rect = instruction_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2 + 100))
+        screen.blit(instruction_text, instruction_rect)
         
         pygame.display.flip()
         
@@ -585,27 +750,22 @@ def get_voice_input_with_visual_feedback(screen, ui_text, current_language, colo
         time.sleep(0.1)
     
     # Phase 3: Processing
-    screen.fill((255, 255, 255))
-    processing_text = pygame.font.Font(None, 32).render("Processing...", True, (0, 100, 200))
+    screen.fill((100, 100, 255))
+    processing_text = pygame.font.Font(None, 48).render("Processing...", True, (255, 255, 255))
     processing_rect = processing_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
     screen.blit(processing_text, processing_rect)
     pygame.display.flip()
-    
-    # Wait for result (with timeout)
-    wait_start = time.time()
-    while time.time() - wait_start < 5.0:  # 5 second timeout for processing
-        if not result_queue.empty():
-            return result_queue.get()
-        
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return None, "quit"
-        
-        time.sleep(0.1)
-    
-    return None, "Processing timeout"
 
-def select_audio_method(screen):
+# Wait for recording thread to finish and get result
+    thread.join()
+    if not result_queue.empty():
+     color_index, message = result_queue.get()
+     return color_index, message
+    else:
+     return None, "No result returned"
+
+
+    def select_audio_method(screen):
     """Select audio method with GUI"""
     global selected_method
     
@@ -715,6 +875,88 @@ def test_microphone(screen, ui_text):
         clock.tick(60)
     
     return True
+def get_voice_input_with_visual_feedback(screen, ui_text, current_language, colors):
+    """Get voice input with visual countdown and feedback"""
+    
+    # Initialize pygame if not already done
+    if not pygame.get_init():
+        pygame.init()
+    
+    clock = pygame.time.Clock()
+    
+    # Phase 1: Get ready (1 second)
+    screen.fill((255, 255, 255))
+    ready_text = pygame.font.Font(None, 48).render(ui_text['get_ready'], True, (255, 100, 0))
+    ready_rect = ready_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
+    screen.blit(ready_text, ready_rect)
+    pygame.display.flip()
+    
+    # Handle events during get ready
+    start_time = time.time()
+    while time.time() - start_time < 1.0:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return None, "quit"
+        time.sleep(0.1)
+    
+    # Phase 2: Recording with countdown
+    recording_start = time.time()
+    
+    # Start recording in background thread
+    result_queue = Queue()
+    
+    def recording_thread():
+        color_index, message = record_and_recognize_audio(current_language, colors)
+        result_queue.put((color_index, message))
+    
+    thread = threading.Thread(target=recording_thread)
+    thread.daemon = True
+    thread.start()
+    
+    # Visual countdown during recording
+    while time.time() - recording_start < audio_recorder.recording_duration:
+        screen.fill((255, 255, 255))
+        
+        # Show recording indicator
+        recording_text = pygame.font.Font(None, 48).render(ui_text['recording'], True, (255, 0, 0))
+        recording_rect = recording_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2 - 50))
+        screen.blit(recording_text, recording_rect)
+        
+        # Show countdown
+        remaining = audio_recorder.recording_duration - (time.time() - recording_start)
+        countdown_text = pygame.font.Font(None, 32).render(f"{remaining:.1f}s", True, (0, 0, 200))
+        countdown_rect = countdown_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2 + 50))
+        screen.blit(countdown_text, countdown_rect)
+        
+        pygame.display.flip()
+        
+        # Handle events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return None, "quit"
+        
+        time.sleep(0.1)
+    
+    # Phase 3: Processing
+    screen.fill((255, 255, 255))
+    processing_text = pygame.font.Font(None, 32).render("Processing...", True, (0, 100, 200))
+    processing_rect = processing_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
+    screen.blit(processing_text, processing_rect)
+    pygame.display.flip()
+    
+    # Wait for result (with timeout)
+    wait_start = time.time()
+    while time.time() - wait_start < 5.0:  # 5 second timeout for processing
+        if not result_queue.empty():
+            return result_queue.get()
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return None, "quit"
+        
+        time.sleep(0.1)
+    
+    return None, "Processing timeout"
 
 def get_available_methods():
     """Get list of available audio methods"""
@@ -748,4 +990,4 @@ __all__ = [
     'initialize_audio',
     'audio_methods',
     'selected_method'
-]
+] 

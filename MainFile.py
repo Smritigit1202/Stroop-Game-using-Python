@@ -489,6 +489,7 @@ def play_game():
         
         # Get input
         start_time = time.time()
+        
         result = handler.get_input(colors, screen, ui_text, fonts)
         end_time = time.time()
         
@@ -507,8 +508,11 @@ def play_game():
             current_stats['non_conflicts'].append(response_time)
         
         # Check answer
-        is_correct = result['color_index'] == color_index
-        
+        if result['success'] and result.get('color_index') is not None:
+          is_correct = result['color_index'] == color_index
+        else:
+          is_correct = False
+
         # Show result
         screen.fill((255, 255, 255))
         screen.blit(word_surface, word_rect)

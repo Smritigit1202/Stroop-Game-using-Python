@@ -97,7 +97,7 @@ class AudioRecoVorder:
     def __init__(self):
         self.temp_dir = tempfile.mkdtemp()
         self.sample_rate = 16000
-        self.recording_duration = 10
+        self.recording_duration = 15
         self.microphone = None
         self.recognizer = recognizer
         self.init_microphone()
@@ -117,7 +117,8 @@ class AudioRecoVorder:
             )
             with self.microphone as source:
                 print("Calibrating microphone for ambient noise...")
-                self.recognizer.adjust_for_ambient_noise(source, duration=1)
+                self.recognizer.adjust_for_ambient_noise(source, duration=2)
+                self.recognizer.energy_threshold = max(50, self.recognizer.energy_threshold * 0.8)
                 print(f"Energy threshold set to: {self.recognizer.energy_threshold}")
         except Exception as e:
             print(f"Warning: Could not initialize microphone: {e}")
@@ -161,66 +162,130 @@ class AudioRecoVorder:
         return None
 
     def get_input(self, colors, screen, ui_text, fonts):
-        try:
+     try:
+        # Fix fonts parameter - ensure it's a dictionary
+        if not isinstance(fonts, dict):
+            print(f"Warning: fonts parameter is not a dictionary: {type(fonts)}")
+            # Create default fonts if the parameter is invalid
+            fonts = {
+                'large': pygame.font.Font(None, 48),
+                'medium': pygame.font.Font(None, 36),
+                'small': pygame.font.Font(None, 24)
+            }
+        
+        # Ensure required font keys exist
+        if 'large' not in fonts:
+            fonts['large'] = pygame.font.Font(None, 48)
+        if 'medium' not in fonts:
+            fonts['medium'] = pygame.font.Font(None, 36)
+        if 'small' not in fonts:
+            fonts['small'] = pygame.font.Font(None, 24)
+        
+        if not self.microphone:
+            self.init_microphone()
             if not self.microphone:
-                self.init_microphone()
-                if not self.microphone:
-                    return {'success': False, 'color_index': None, 'message': 'microphone_init_failed'}
-            self.show_listening_screen(screen, ui_text, fonts)
-            with self.microphone as source:
-                self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
-                self.show_recording_screen(screen, ui_text, fonts)
-                try:
-                    print(f"Listening for up to {self.recording_duration} seconds...")
-                    audio = self.recognizer.listen(
-                        source,
-                        timeout=2,
-                        phrase_time_limit=self.recording_duration
+                return {'success': False, 'color_index': None, 'message': 'microphone_init_failed'}
+        
+        # Phase 1: Show "Get Ready" message
+        screen.fill((255, 255, 255))
+        ready_text = fonts['large'].render(ui_text.get('get_ready', 'Get Ready!'), True, (255, 100, 0))
+        ready_rect = ready_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
+        screen.blit(ready_text, ready_rect)
+        
+        instruction_text = fonts['medium'].render("Say the COLOR NAME when recording starts", True, (0, 0, 0))
+        instruction_rect = instruction_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2 + 60))
+        screen.blit(instruction_text, instruction_rect)
+        
+        pygame.display.flip()
+        time.sleep(2)  # Give user time to prepare
+        
+        # Phase 2: Show listening screen
+        self.show_listening_screen(screen, ui_text, fonts)
+        
+        with self.microphone as source:
+            # Adjust for ambient noise with shorter duration
+            print("Adjusting for ambient noise...")
+            self.recognizer.adjust_for_ambient_noise(source, duration=0.3)
+            
+            # Phase 3: Show recording screen
+            self.show_recording_screen(screen, ui_text, fonts)
+            
+            try:
+                print(f"Listening for up to {self.recording_duration} seconds...")
+                # Increased timeout and phrase time limit for better user experience
+                audio = self.recognizer.listen(
+                    source,
+                    timeout=3,  # Wait up to 3 seconds for speech to start
+                    phrase_time_limit=self.recording_duration  # Allow full recording duration
+                )
+                print("Audio captured successfully!")
+                
+            except sr.WaitTimeoutError:
+                print("Timeout - no speech detected")
+                return {'success': False, 'color_index': None, 'message': 'timeout'}
+            except Exception as e:
+                print(f"Error during audio capture: {e}")
+                return {'success': False, 'color_index': None, 'message': f'capture_error_{str(e)}'}
+        
+        # Phase 4: Show processing screen
+        self.show_processing_screen(screen, ui_text, fonts)
+        
+        # Recognition phase
+        recognized_text = None
+        recognition_methods = [
+            ('google', 'en-US'),
+            ('google', 'en-IN'),
+            ('google', 'en-GB'),
+        ]
+        
+        for method, language in recognition_methods:
+            try:
+                print(f"Trying recognition with {method} ({language})...")
+                if method == 'google':
+                    recognized_text = self.recognizer.recognize_google(
+                        audio,
+                        language=language,
+                        show_all=False
                     )
-                except sr.WaitTimeoutError:
-                    return {'success': False, 'color_index': None, 'message': 'timeout'}
-            self.show_processing_screen(screen, ui_text, fonts)
-            recognized_text = None
-            recognition_methods = [
-                ('google', 'en-US'),
-                ('google', 'en-IN'),
-                ('google', 'en-GB'),
-            ]
-            for method, language in recognition_methods:
-                try:
-                    if method == 'google':
-                        recognized_text = self.recognizer.recognize_google(
-                            audio,
-                            language=language,
-                            show_all=False
-                        )
-                    elif method == 'sphinx':
-                        recognized_text = self.recognizer.recognize_sphinx(audio)
-                    if recognized_text:
-                        print(f"Recognized with {method} ({language}): '{recognized_text}'")
-                        break
-                except sr.UnknownValueError:
-                    continue
-                except sr.RequestError as e:
-                    print(f"Recognition service error: {e}")
-                    continue
-                except Exception as e:
-                    print(f"Recognition error: {e}")
-                    continue
-            if not recognized_text:
-                return {'success': False, 'color_index': None, 'message': 'recognition_failed'}
-            print(f"Final recognized text: '{recognized_text}'")
-            color_index = self.match_color(recognized_text, colors)
-            if color_index is not None:
-                return {'success': True, 'color_index': color_index, 'message': f'recognized_{recognized_text}'}
-            else:
-                return {'success': False, 'color_index': None, 'message': f'no_match_{recognized_text}'}
-        except KeyboardInterrupt:
-            return {'success': False, 'color_index': None, 'message': 'quit'}
-        except Exception as e:
-            print(f"Audio input error: {e}")
-            return {'success': False, 'color_index': None, 'message': f'error_{str(e)}'}
-
+                elif method == 'sphinx':
+                    recognized_text = self.recognizer.recognize_sphinx(audio)
+                
+                if recognized_text:
+                    print(f"Recognition successful with {method} ({language}): '{recognized_text}'")
+                    break
+                    
+            except sr.UnknownValueError:
+                print(f"Could not understand audio with {method} ({language})")
+                continue
+            except sr.RequestError as e:
+                print(f"Recognition service error with {method}: {e}")
+                continue
+            except Exception as e:
+                print(f"Recognition error with {method}: {e}")
+                continue
+        
+        if not recognized_text:
+            return {'success': False, 'color_index': None, 'message': 'recognition_failed'}
+        
+        print(f"Final recognized text: '{recognized_text}'")
+        
+        # Color matching
+        color_index = self.match_color(recognized_text, colors)
+        
+        if color_index is not None:
+            color_name = colors[color_index][0] if isinstance(colors[color_index], (list, tuple)) else str(colors[color_index])
+            print(f"Successfully matched '{recognized_text}' to color '{color_name}' (index: {color_index})")
+            return {'success': True, 'color_index': color_index, 'message': f'recognized_{recognized_text}'}
+        else:
+            print(f"No color match found for '{recognized_text}'")
+            return {'success': False, 'color_index': None, 'message': f'no_match_{recognized_text}'}
+            
+     except KeyboardInterrupt:
+        return {'success': False, 'color_index': None, 'message': 'quit'}
+     except Exception as e:
+        print(f"Audio input error: {e}")
+        return {'success': False, 'color_index': None, 'message': f'error_{str(e)}'}
+    
     def record_sounddevice(self):
         """Record audio using SoundDevice library"""
         if not audio_methods.get('sounddevice'):
@@ -622,36 +687,128 @@ def record_and_recognize_audio(current_language, colors):
 
 def get_voice_input_with_visual_feedback(screen, ui_text, current_language, colors, fonts):
     """Get voice input with visual countdown and feedback"""
-
+    
+    # Fix fonts parameter - ensure it's a dictionary
+    if not isinstance(fonts, dict):
+        print(f"Warning: fonts parameter is not a dictionary: {type(fonts)}")
+        fonts = load_fonts()  # Load default fonts
+    
+    # Ensure required font keys exist
+    required_fonts = ['large', 'medium', 'small']
+    for font_key in required_fonts:
+        if font_key not in fonts:
+            fonts[font_key] = pygame.font.Font(None, 48 if font_key == 'large' else 36 if font_key == 'medium' else 24)
+    
     # Ensure pygame is initialized
     if not pygame.get_init():
         pygame.init()
 
     clock = pygame.time.Clock()
 
-    # Phase 1: Get ready (2 seconds)
-    screen.fill((255, 255, 255))
-    ready_text = fonts['large'].render(ui_text.get('get_ready', 'Get Ready!'), True, (255, 100, 0))
-    ready_rect = ready_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
-    screen.blit(ready_text, ready_rect)
-
-    countdown_text = pygame.font.Font(None, 32).render("Recording will start in 2 seconds...", True, (0, 0, 0))
-    countdown_rect = countdown_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2 + 60))
-    screen.blit(countdown_text, countdown_rect)
-
-    pygame.display.flip()
-
-    start_time = time.time()
-    while time.time() - start_time < 2.0:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return None, "quit"
-        clock.tick(60)
+    # Phase 1: Get ready (3 seconds with countdown)
+    for countdown in range(3, 0, -1):
+        screen.fill((255, 255, 255))
+        
+        ready_text = fonts['large'].render(ui_text.get('get_ready', 'Get Ready!'), True, (255, 100, 0))
+        ready_rect = ready_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2 - 50))
+        screen.blit(ready_text, ready_rect)
+        
+        countdown_text = fonts['medium'].render(f"Recording starts in {countdown}...", True, (0, 0, 0))
+        countdown_rect = countdown_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
+        screen.blit(countdown_text, countdown_rect)
+        
+        instruction_text = fonts['small'].render("Say the COLOR NAME of the word shown", True, (100, 100, 100))
+        instruction_rect = instruction_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2 + 50))
+        screen.blit(instruction_text, instruction_rect)
+        
+        pygame.display.flip()
+        
+        # Wait for 1 second while checking for quit events
+        start_time = time.time()
+        while time.time() - start_time < 1.0:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return None, "quit"
+            clock.tick(60)
 
     # Phase 2: Recording with countdown
     total_start_time = time.time()
     recording_start = time.time()
     result_queue = Queue()
+
+    def recording_thread():
+        try:
+            color_index, message = record_and_recognize_audio(current_language, colors)
+            result_queue.put((color_index, message))
+        except Exception as e:
+            print(f"Recording thread error: {e}")
+            result_queue.put((None, f"recording_error_{str(e)}"))
+
+    thread = threading.Thread(target=recording_thread)
+    thread.daemon = True
+    thread.start()
+
+    # Show recording feedback with countdown
+    recording_duration = audio_recorder.recording_duration
+    
+    while time.time() - recording_start < recording_duration:
+        screen.fill((255, 100, 100))
+
+        # Show recording indicator
+        recording_text = fonts['large'].render(ui_text.get('recording', 'Recording...'), True, (255, 255, 255))
+        recording_rect = recording_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2 - 50))
+        screen.blit(recording_text, recording_rect)
+
+        # Show countdown
+        remaining = recording_duration - (time.time() - recording_start)
+        countdown_text = fonts['medium'].render(f"Time remaining: {remaining:.1f}s", True, (255, 255, 255))
+        countdown_rect = countdown_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
+        screen.blit(countdown_text, countdown_rect)
+
+        # Show instruction
+        instruction_text = fonts['small'].render("Speak clearly: RED, GREEN, BLUE, YELLOW, or PINK", True, (255, 255, 255))
+        instruction_rect = instruction_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2 + 50))
+        screen.blit(instruction_text, instruction_rect)
+
+        pygame.display.flip()
+
+        # Check for quit events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return None, "quit"
+
+        clock.tick(60)
+
+    # Phase 3: Processing
+    screen.fill((100, 100, 255))
+    processing_text = fonts['large'].render(ui_text.get('processing', 'Processing...'), True, (255, 255, 255))
+    processing_rect = processing_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
+    screen.blit(processing_text, processing_rect)
+    
+    wait_text = fonts['small'].render("Please wait while we process your voice...", True, (255, 255, 255))
+    wait_rect = wait_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2 + 50))
+    screen.blit(wait_text, wait_rect)
+    
+    pygame.display.flip()
+
+    # Wait for recording thread to finish with timeout
+    thread.join(timeout=5.0)  # Wait maximum 5 seconds for processing
+    
+    if thread.is_alive():
+        print("Recording thread timed out")
+        return None, "processing_timeout"
+    
+    total_end_time = time.time()
+    total_response_time = total_end_time - total_start_time
+
+    # Get result from queue
+    if not result_queue.empty():
+        color_index, message = result_queue.get()
+        print(f"Total response time: {total_response_time:.2f} seconds")
+        return color_index, message
+    else:
+        print("No result returned from recording thread")
+        return None, "no_result"
 
 def recording_thread():
     color_index, message = record_and_recognize_audio(current_language, colors)

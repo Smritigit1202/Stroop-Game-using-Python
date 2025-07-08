@@ -596,7 +596,12 @@ def play_game():
     
     # Show final results
     show_final_results(score, response_times)
-    
+    # Calculate and store efficiency
+    if response_times:
+     avg_time = sum(response_times) / len(response_times)
+     efficiency = score / avg_time if avg_time > 0 else 0
+     update_efficiency_db(current_input_method, current_language, efficiency)
+
     return True
 
 def show_final_results(score, response_times):
@@ -870,9 +875,7 @@ def main():
                 running = False
         
         clock.tick(60)
-    efficiency = score / total_time if total_time > 0 else 0
-    update_efficiency_db(method_used, language_used, efficiency)
-
+   
     # Cleanup
     for handler in input_handlers.values():
         if hasattr(handler, 'cleanup'):

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import sqlite3
 import pygame
 import random
 import time
@@ -104,7 +104,7 @@ LANGUAGES = {
             'method_gesture': '4. Gesture Input',
             'method_camera': '5. Camera Color Detection',
             'method_qr': '6. QR Code Input',
-            'method_test': 'Press T to test current method',
+            'method_test': 'Press T to Show efficiency comparison',
             'get_ready': 'Get ready...',
             'processing': 'Processing...',
             'avg_time': 'Average Time',
@@ -167,6 +167,20 @@ current_language = 'english'
 current_input_method = InputMethod.VOICE
 colors = LANGUAGES[current_language]['colors']
 ui_text = LANGUAGES[current_language]['ui']
+def init_db():
+    print("[INIT] Initializing database and creating table if not exists...")
+    conn = sqlite3.connect('stroop_efficiency.db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS efficiency (
+                    method TEXT,
+                    language TEXT,
+                    highest_efficiency REAL,
+                    average_efficiency REAL,
+                    games_played INTEGER,
+                    PRIMARY KEY (method, language)
+                )''')
+    conn.commit()
+    conn.close()
 
 # Initialize input handlers
 input_handlers = {}
@@ -244,6 +258,36 @@ def load_fonts():
     return fonts
 
 fonts = load_fonts()
+def show_efficiency_analysis():
+    conn = sqlite3.connect('stroop_efficiency.db')
+    c = conn.cursor()
+    c.execute("SELECT * FROM efficiency ORDER BY method, language")
+    data = c.fetchall()
+    conn.close()
+
+    screen.fill((255, 255, 255))
+    title = render_text("Efficiency Analysis (Max / Avg)", 'large', (0, 0, 200))
+    screen.blit(title, (SCREEN_WIDTH//2 - 250, 30))
+
+    y = 100
+    for row in data:
+        method, lang, high, avg, played = row
+        line = f"{method.upper()} | {lang.capitalize():<7} | Max: {high:.2f} | Avg: {avg:.2f} | Played: {played}"
+        text = render_text(line, 'small', (0, 0, 0))
+        screen.blit(text, (100, y))
+        y += 30
+    
+    note = render_text("Press any key to return", 'small', (100, 100, 100))
+    screen.blit(note, (SCREEN_WIDTH//2 - 100, SCREEN_HEIGHT - 50))
+    pygame.display.flip()
+
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                waiting = False
+            elif event.type == pygame.KEYDOWN:
+                waiting = False
 
 def render_text(text, size, color):
     font_key = f"{current_language}_{size}"
@@ -358,9 +402,7 @@ def select_input_method():
                     available_methods = get_available_methods()  # Update method names
                     selected_index = min(selected_index, len(available_methods) - 1)
                 elif event.key == pygame.K_t:
-                    if test_input_method():
-                        return True
-                    return False
+                    show_efficiency_analysis()
         
         clock.tick(60)
 
@@ -641,7 +683,8 @@ def show_final_results(score, response_times):
                     return True
         
         clock.tick(60)
-    
+    update_efficiency_db(current_input_method, current_language, efficiency)
+
     return True
 
 def show_comparison():
@@ -708,6 +751,27 @@ def show_comparison():
         clock.tick(60)
     
     return True
+def update_efficiency_db(method, language, efficiency):
+    conn = sqlite3.connect('stroop_efficiency.db')
+    c = conn.cursor()
+    
+    # Fetch existing row
+    c.execute("SELECT highest_efficiency, average_efficiency, games_played FROM efficiency WHERE method=? AND language=?", 
+              (method, language))
+    row = c.fetchone()
+    
+    if row:
+        highest, avg, games = row
+        new_highest = max(highest, efficiency)
+        new_avg = (avg * games + efficiency) / (games + 1)
+        c.execute("UPDATE efficiency SET highest_efficiency=?, average_efficiency=?, games_played=? WHERE method=? AND language=?",
+                  (new_highest, new_avg, games + 1, method, language))
+    else:
+        c.execute("INSERT INTO efficiency VALUES (?, ?, ?, ?, ?)", 
+                  (method, language, efficiency, efficiency, 1))
+    
+    conn.commit()
+    conn.close()
 
 def show_start_screen():
     """Show the start screen"""
@@ -766,14 +830,15 @@ def show_start_screen():
 def main():
     """Main game loop"""
     global current_language, current_input_method
-    
+    init_db()
     # Initial setup
     if not select_input_method():
         return
     
     running = True
     game_state = 'menu'  # 'menu', 'playing', 'results'
-    
+   
+
     while running:
         if game_state == 'menu':
             show_start_screen()
@@ -805,7 +870,9 @@ def main():
                 running = False
         
         clock.tick(60)
-    
+    efficiency = score / total_time if total_time > 0 else 0
+    update_efficiency_db(method_used, language_used, efficiency)
+
     # Cleanup
     for handler in input_handlers.values():
         if hasattr(handler, 'cleanup'):

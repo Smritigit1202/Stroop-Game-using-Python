@@ -126,7 +126,7 @@ class CameraInput:
             return detected_color
         
         return None
-    
+
     def show_camera_feed(self, frame, detected_color=None):
         """
         Display camera feed with detection overlay
@@ -182,7 +182,20 @@ class CameraInput:
             cv2.putText(overlay, instruction, (15, y_pos + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
         
         cv2.imshow("Camera - Color Detection", overlay)
+
+
     
+    def map_to_detection_color(self, color_name):
+     hindi_to_english = {
+        'लाल': 'red',
+        'हरा': 'green',
+        'नीला': 'blue',
+        'पीला': 'yellow',
+        'गुलाबी': 'pink'
+    }
+     color_name = color_name.strip().lower()
+     return color_name if color_name in self.color_ranges else hindi_to_english.get(color_name)
+
     def get_input(self, colors, screen, ui_text, fonts):
         """
         Get color input from camera
@@ -215,12 +228,13 @@ class CameraInput:
         required_stable_frames = 8  # Require 8 consecutive detections for stability
         
         # Create a mapping of game colors to detection colors
+        # Hindi-to-English mapping handled here
         color_mapping = {}
         for i, (color_name, color_rgb) in enumerate(colors):
-            # Map game color names to detection color names
-            game_color_lower = color_name.lower()
-            if game_color_lower in self.color_ranges:
-                color_mapping[game_color_lower] = i
+          mapped_color = self.map_to_detection_color(color_name)
+          if mapped_color:
+            color_mapping[mapped_color] = i
+
         
         while True:
             current_time = time.time()

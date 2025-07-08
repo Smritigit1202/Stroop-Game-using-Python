@@ -6,6 +6,8 @@ import time
 import sys
 import io
 import os
+import pygame.freetype
+import math
 
 # Ensure UTF-8 encoding for output
 sys.stdout = io.TextIOWrapper(sys.stdout.detach(), encoding='utf-8')
@@ -68,7 +70,23 @@ COLORS = {
     'blue': (0, 0, 255),
     'yellow': (255, 255, 0),
     'pink': (255, 20, 147),
+}
 
+# UI Colors and gradients
+UI_COLORS = {
+    'primary': (70, 130, 180),        # Steel blue
+    'secondary': (100, 149, 237),     # Cornflower blue
+    'accent': (255, 215, 0),          # Gold
+    'success': (50, 205, 50),         # Lime green
+    'error': (220, 20, 60),           # Crimson
+    'warning': (255, 140, 0),         # Dark orange
+    'background': (240, 248, 255),    # Alice blue
+    'text': (25, 25, 112),            # Midnight blue
+    'light_text': (100, 100, 100),    # Gray
+    'white': (255, 255, 255),
+    'black': (0, 0, 0),
+    'dark_bg': (30, 30, 50),
+    'game_bg': (245, 245, 250)
 }
 
 # Languages and UI text
@@ -109,7 +127,9 @@ LANGUAGES = {
             'processing': 'Processing...',
             'avg_time': 'Average Time',
             'efficiency': 'Efficiency',
-            'stroop_effect': 'Stroop Effect'
+            'stroop_effect': 'Stroop Effect',
+            'your_answer': 'Your answer',
+            'correct_answer': 'Correct answer'
         }
     },
     'hindi': {
@@ -118,38 +138,40 @@ LANGUAGES = {
             ("पीला", (255, 255, 0)), ("गुलाबी", (255, 20, 147))
         ],
         'ui': {
-    'title': 'स्ट्रूप प्रभाव खेल',
-    'subtitle': 'बहु-इनपुट विधियां',
-    'rules': 'नियम:',
-    'rule1': '१. एक शब्द एक रंग में दिखाई जाएगी',
-    'rule2': '२. शब्द को नजरअंदाज करें, रंग पर ध्यान दें',
-    'instruction': 'रंग का चयन करें (शब्द नहीं):',
-    'correct': 'सही! +१',
-    'wrong': 'गलत!',
-    'timeout': 'समय समाप्त!',
-    'final_score': 'अंतिम स्कोर',
-    'accuracy': 'सटीकता',
-    'restart': 'फिर से खेलने के लिए SPACE दबाएं या ESC दबाएं',
-    'start_quit': 'शुरू करने के लिए SPACE दबाएं या बाहर निकलने के लिए ESC',
-    'language_change': 'भाषा बदलने के लिए L दबाएं',
-    'compare': 'परिणाम तुलना के लिए C दबाएं',
-    'question': 'प्रश्न',
-    'score': 'स्कोर',
-    'input_method': 'इनपुट विधि',
-    'select_method': 'इनपुट विधि चुनें:',
-    'method_voice': '१. आवाज इनपुट',
-    'method_click': '२. क्लिक इनपुट',
-    'method_key': '३. कीबोर्ड इनपुट',
-    'method_gesture': '४. हावभाव इनपुट',
-    'method_camera': '५. कैमरा रंग पहचान',
-    'method_qr': '६. QR कोड इनपुट',
-    'method_test': 'वर्तमान विधि परीक्षण के लिए T दबाएं',
-    'get_ready': 'तैयार हो जाएं...',
-    'processing': 'प्रसंस्करण...',
-    'avg_time': 'औसत समय',
-    'efficiency': 'दक्षता',
-    'stroop_effect': 'स्ट्रूप प्रभाव'
-}
+            'title': 'स्ट्रूप प्रभाव खेल',
+            'subtitle': 'बहु-इनपुट विधियां',
+            'rules': 'नियम:',
+            'rule1': '१. एक शब्द एक रंग में दिखाई देगा',
+            'rule2': '२. शब्द को नजरअंदाज करें, रंग पर ध्यान दें',
+            'instruction': 'रंग का चयन करें (शब्द नहीं):',
+            'correct': 'सही! +१',
+            'wrong': 'गलत!',
+            'timeout': 'समय समाप्त!',
+            'final_score': 'अंतिम स्कोर',
+            'accuracy': 'सटीकता',
+            'restart': 'फिर से खेलने के लिए SPACE दबाएं या ESC दबाएं',
+            'start_quit': 'शुरू करने के लिए SPACE दबाएं या बाहर निकलने के लिए ESC',
+            'language_change': 'भाषा बदलने के लिए [L] दबाएं',
+            'compare': 'परिणाम तुलना के लिए [C] दबाएं',
+            'question': 'प्रश्न',
+            'score': 'स्कोर',
+            'input_method': 'इनपुट विधि',
+            'select_method': 'इनपुट विधि चुनें:',
+            'method_voice': '१. आवाज इनपुट',
+            'method_click': '२. क्लिक इनपुट',
+            'method_key': '३. कीबोर्ड इनपुट',
+            'method_gesture': '४. हाव-भाव इनपुट',
+            'method_camera': '५. कैमरा रंग पहचान',
+            'method_qr': '६. QR कोड इनपुट',
+            'method_test': 'दक्षता तुलना के लिए T दबाएं',
+            'get_ready': 'तैयार हो जाएं...',
+            'processing': 'प्रसंस्करण...',
+            'avg_time': 'औसत समय',
+            'efficiency': 'दक्षता',
+            'stroop_effect': 'स्ट्रूप प्रभाव',
+            'your_answer': 'आपका उत्तर',
+            'correct_answer': 'सही उत्तर'
+        }
     }
 }
 
@@ -167,6 +189,7 @@ current_language = 'english'
 current_input_method = InputMethod.VOICE
 colors = LANGUAGES[current_language]['colors']
 ui_text = LANGUAGES[current_language]['ui']
+
 def init_db():
     print("[INIT] Initializing database and creating table if not exists...")
     conn = sqlite3.connect('stroop_efficiency.db')
@@ -217,68 +240,180 @@ game_stats = {
     }
 }
 
-# Font management
+# Enhanced Font management with better Hindi support
 def load_fonts():
     fonts = {}
     
-    # Try to load Hindi fonts
+    # Enhanced Hindi font paths - more comprehensive search
     hindi_font_paths = [
-        "Mangal.ttf", "./fonts/Mangal.ttf", "C:/Windows/Fonts/mangal.ttf",
-        "/System/Library/Fonts/Mangal.ttf", "/usr/share/fonts/truetype/mangal/Mangal.ttf"
-    ]
+    "./fonts/NotoSansDevanagari-Regular.ttf",     # ✅ Highest priority
+    "NotoSansDevanagari-Regular.ttf",
+    "C:/Windows/Fonts/NotoSansDevanagari-Regular.ttf",
+    "/usr/share/fonts/truetype/noto/NotoSansDevanagari-Regular.ttf",
+    
+    
+]
+
     
     hindi_font = None
     for path in hindi_font_paths:
         if os.path.exists(path):
             try:
-                pygame.font.Font(path, 24)
-                hindi_font = path
-                break
-            except:
+                # Test if the font can render Hindi text
+                test_font = pygame.font.Font(path, 24)
+                test_surface = test_font.render("हिंदी", True, (0, 0, 0))
+                if test_surface.get_width() > 0:  # Check if text was rendered
+                    hindi_font = path
+                    print(f"[FONT] Using Hindi font: {path}")
+                    break
+            except Exception as e:
+                print(f"[FONT] Failed to load font {path}: {e}")
                 continue
     
-    # Load fonts
-    if hindi_font:
-        try:
-            fonts['hindi_large'] = pygame.font.Font(hindi_font, 56)
-            fonts['hindi_medium'] = pygame.font.Font(hindi_font, 36)
-            fonts['hindi_small'] = pygame.font.Font(hindi_font, 24)
-        except:
-            hindi_font = None
-    
     if not hindi_font:
-        fonts['hindi_large'] = pygame.font.Font(None, 56)
-        fonts['hindi_medium'] = pygame.font.Font(None, 36)
-        fonts['hindi_small'] = pygame.font.Font(None, 24)
+        print("[FONT] Warning: No Hindi font found, using default font")
+        print("[FONT] Hindi text may not display correctly")
+        print("[FONT] Please install Mangal or Noto Sans Devanagari font")
     
-    fonts['english_large'] = pygame.font.SysFont("arial", 56)
-    fonts['english_medium'] = pygame.font.SysFont("arial", 36)
-    fonts['english_small'] = pygame.font.SysFont("arial", 24)
+    # Load fonts with different sizes
+    font_sizes = {
+        'large': 56,
+        'medium': 36,
+        'small': 24,
+        'title': 72,
+        'subtitle': 28
+    }
+    
+    for size_name, size in font_sizes.items():
+        if hindi_font:
+            try:
+                fonts[f'hindi_{size_name}'] = pygame.font.Font(hindi_font, size)
+            except Exception as e:
+                print(f"[FONT] Failed to create Hindi font size {size}: {e}")
+                fonts[f'hindi_{size_name}'] = pygame.font.Font(None, size)
+        else:
+            fonts[f'hindi_{size_name}'] = pygame.font.Font(None, size)
+        
+        # English fonts
+        try:
+            fonts[f'english_{size_name}'] = pygame.font.SysFont("arial", size, bold=(size_name in ['title', 'large']))
+        except:
+            fonts[f'english_{size_name}'] = pygame.font.Font(None, size)
     
     return fonts
 
 fonts = load_fonts()
+
+def draw_gradient_rect(surface, start_color, end_color, rect, vertical=True):
+    """Draw a gradient rectangle"""
+    if vertical:
+        for y in range(rect.height):
+            ratio = y / rect.height
+            r = int(start_color[0] * (1 - ratio) + end_color[0] * ratio)
+            g = int(start_color[1] * (1 - ratio) + end_color[1] * ratio)
+            b = int(start_color[2] * (1 - ratio) + end_color[2] * ratio)
+            pygame.draw.line(surface, (r, g, b), 
+                           (rect.x, rect.y + y), 
+                           (rect.x + rect.width, rect.y + y))
+    else:
+        for x in range(rect.width):
+            ratio = x / rect.width
+            r = int(start_color[0] * (1 - ratio) + end_color[0] * ratio)
+            g = int(start_color[1] * (1 - ratio) + end_color[1] * ratio)
+            b = int(start_color[2] * (1 - ratio) + end_color[2] * ratio)
+            pygame.draw.line(surface, (r, g, b), 
+                           (rect.x + x, rect.y), 
+                           (rect.x + x, rect.y + rect.height))
+
+def draw_button(surface, text, rect, color, text_color, font_size='medium', hover=False):
+    """Draw a modern button with gradient and shadow"""
+    # Shadow
+    shadow_rect = pygame.Rect(rect.x + 3, rect.y + 3, rect.width, rect.height)
+    pygame.draw.rect(surface, (0, 0, 0, 50), shadow_rect, border_radius=10)
+    
+    # Button background
+    if hover:
+        button_color = tuple(min(255, c + 20) for c in color)
+    else:
+        button_color = color
+    
+    pygame.draw.rect(surface, button_color, rect, border_radius=10)
+    pygame.draw.rect(surface, tuple(max(0, c - 40) for c in color), rect, 2, border_radius=10)
+    
+    # Button text
+    button_text = render_text(text, font_size, text_color)
+    text_rect = button_text.get_rect(center=rect.center)
+    surface.blit(button_text, text_rect)
+
+def draw_animated_background(surface, time_offset=0):
+    """Draw animated background with particles"""
+    surface.fill(UI_COLORS['game_bg'])
+    
+    # Draw floating particles
+    for i in range(20):
+        x = (200 + i * 60 + math.sin(time_offset + i) * 30) % SCREEN_WIDTH
+        y = (100 + i * 40 + math.cos(time_offset + i * 0.5) * 20) % SCREEN_HEIGHT
+        size = 3 + math.sin(time_offset + i * 0.3) * 2
+        alpha = int(50 + math.sin(time_offset + i * 0.7) * 30)
+        
+        color = (*UI_COLORS['primary'], alpha)
+        pygame.draw.circle(surface, color[:3], (int(x), int(y)), int(size))
+
 def show_efficiency_analysis():
+    """Enhanced efficiency analysis with better formatting"""
     conn = sqlite3.connect('stroop_efficiency.db')
     c = conn.cursor()
     c.execute("SELECT * FROM efficiency ORDER BY method, language")
     data = c.fetchall()
     conn.close()
 
-    screen.fill((255, 255, 255))
-    title = render_text("Efficiency Analysis (Max / Avg)", 'large', (0, 0, 200))
-    screen.blit(title, (SCREEN_WIDTH//2 - 250, 30))
-
-    y = 100
-    for row in data:
-        method, lang, high, avg, played = row
-        line = f"{method.upper()} | {lang.capitalize():<7} | Max: {high:.2f} | Avg: {avg:.2f} | Played: {played}"
-        text = render_text(line, 'small', (0, 0, 0))
-        screen.blit(text, (100, y))
-        y += 30
+    draw_animated_background(screen)
     
-    note = render_text("Press any key to return", 'small', (100, 100, 100))
-    screen.blit(note, (SCREEN_WIDTH//2 - 100, SCREEN_HEIGHT - 50))
+    # Title with modern styling
+    title_rect = pygame.Rect(0, 20, SCREEN_WIDTH, 80)
+    draw_gradient_rect(screen, UI_COLORS['primary'], UI_COLORS['secondary'], title_rect)
+    
+    title = render_text("Efficiency Analysis", 'title', UI_COLORS['white'])
+    title_rect_center = title.get_rect(center=(SCREEN_WIDTH//2, 60))
+    screen.blit(title, title_rect_center)
+
+    # Data table with modern styling
+    y = 140
+    header_rect = pygame.Rect(50, y, SCREEN_WIDTH - 100, 40)
+    pygame.draw.rect(screen, UI_COLORS['secondary'], header_rect, border_radius=5)
+    
+    header_text = render_text("Method | Language | Max Efficiency | Avg Efficiency | Games Played", 
+                             'medium', UI_COLORS['white'])
+    screen.blit(header_text, (70, y + 10))
+    
+    y += 60
+    
+    for i, row in enumerate(data):
+        method, lang, high, avg, played = row
+        
+        # Alternate row colors
+        row_color = UI_COLORS['white'] if i % 2 == 0 else UI_COLORS['background']
+        row_rect = pygame.Rect(50, y, SCREEN_WIDTH - 100, 35)
+        pygame.draw.rect(screen, row_color, row_rect, border_radius=3)
+        
+        # Method name with proper capitalization
+        method_display = method.capitalize()
+        lang_display = "English" if lang == 'english' else "Hindi"
+        
+        line = f"{method_display:<12} | {lang_display:<10} | {high:.2f}           | {avg:.2f}           | {played}"
+        text = render_text(line, 'small', UI_COLORS['text'])
+        screen.blit(text, (70, y + 8))
+        y += 40
+    
+    # Instructions
+    instruction_rect = pygame.Rect(0, SCREEN_HEIGHT - 80, SCREEN_WIDTH, 40)
+    pygame.draw.rect(screen, UI_COLORS['accent'], instruction_rect)
+    
+    note = render_text("Press any key to return to the main menu", 
+                      'medium', UI_COLORS['text'])
+    note_rect = note.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT - 60))
+    screen.blit(note, note_rect)
+    
     pygame.display.flip()
 
     waiting = True
@@ -289,21 +424,44 @@ def show_efficiency_analysis():
             elif event.type == pygame.KEYDOWN:
                 waiting = False
 
+
+
 def render_text(text, size, color):
-    font_key = f"{current_language}_{size}"
-    if font_key in fonts:
-        try:
-            return fonts[font_key].render(text, True, color)
-        except:
-            return fonts[f"english_{size}"].render(text, True, color)
-    else:
-        return fonts[f"english_{size}"].render(text, True, color)
+    """Render Hindi-English mixed text with proper fonts"""
+    import re
+    hindi_font = fonts.get(f'hindi_{size}', fonts["english_medium"])
+    english_font = fonts.get(f'english_{size}', fonts["english_medium"])
+    
+    # Split into Hindi and English parts
+    segments = re.findall(r'[A-Za-z0-9]+|[^A-Za-z0-9]+', text)
+    
+    rendered_segments = []
+    for segment in segments:
+        if re.match(r'[A-Za-z0-9]', segment):
+            surf = english_font.render(segment, True, color)
+        else:
+            surf = hindi_font.render(segment, True, color)
+        rendered_segments.append(surf)
+    
+    # Combine all segments horizontally
+    total_width = sum(s.get_width() for s in rendered_segments)
+    max_height = max(s.get_height() for s in rendered_segments)
+    final_surface = pygame.Surface((total_width, max_height), pygame.SRCALPHA)
+    
+    x_offset = 0
+    for seg in rendered_segments:
+        final_surface.blit(seg, (x_offset, 0))
+        x_offset += seg.get_width()
+    
+    return final_surface
 
 def update_language(lang):
+    """Update language with proper text refresh"""
     global current_language, colors, ui_text
     current_language = lang
     colors = LANGUAGES[lang]['colors']
     ui_text = LANGUAGES[lang]['ui']
+    print(f"[LANG] Language changed to: {lang}")
 
 def get_available_methods():
     """Get list of available input methods"""
@@ -324,62 +482,92 @@ def get_available_methods():
     return available
 
 def select_input_method():
-    """Show input method selection screen"""
+    """Enhanced input method selection with modern UI"""
     global current_input_method
     
     available_methods = get_available_methods()
     
     if not available_methods:
-        # Show error if no methods available
-        screen.fill((255, 255, 255))
-        error_text = render_text("No input methods available!", 'large', (255, 0, 0))
-        error_rect = error_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2))
-        screen.blit(error_text, error_rect)
+        # Enhanced error display
+        draw_animated_background(screen)
+        
+        error_rect = pygame.Rect(SCREEN_WIDTH//2 - 300, SCREEN_HEIGHT//2 - 50, 600, 100)
+        pygame.draw.rect(screen, UI_COLORS['error'], error_rect, border_radius=15)
+        
+        error_text = render_text("No input methods available!", 'large', UI_COLORS['white'])
+        error_text_rect = error_text.get_rect(center=error_rect.center)
+        screen.blit(error_text, error_text_rect)
+        
         pygame.display.flip()
         time.sleep(3)
         return False
     
     selected_index = 0
+    animation_time = 0
     
     while True:
-        screen.fill((255, 255, 255))
+        animation_time += 0.1
+        draw_animated_background(screen, animation_time)
         
-        # Title
-        title_text = render_text(ui_text['select_method'], 'large', (0, 0, 200))
-        title_rect = title_text.get_rect(center=(SCREEN_WIDTH//2, 100))
-        screen.blit(title_text, title_rect)
+        # Title with gradient background
+        title_rect = pygame.Rect(0, 30, SCREEN_WIDTH, 100)
+        draw_gradient_rect(screen, UI_COLORS['primary'], UI_COLORS['secondary'], title_rect)
         
-        # Current language
-        lang_text = render_text(f"Language: {'English' if current_language == 'english' else 'Hindi (हिंदी)'}", 
-                               'medium', (0, 100, 0))
-        lang_rect = lang_text.get_rect(center=(SCREEN_WIDTH//2, 150))
+        title_text = render_text(ui_text['select_method'], 'title', UI_COLORS['white'])
+        title_text_rect = title_text.get_rect(center=(SCREEN_WIDTH//2, 80))
+        screen.blit(title_text, title_text_rect)
+        
+        # Current language display
+        lang_display = "English" if current_language == 'english' else "हिंदी"
+        lang_text = render_text(f"भाषा: {lang_display}", 'medium', UI_COLORS['text'])
+        lang_rect = lang_text.get_rect(center=(SCREEN_WIDTH//2, 160))
         screen.blit(lang_text, lang_rect)
         
-        # Method list
+        # Method selection with modern buttons
         start_y = 220
-        for i, (method, name) in enumerate(available_methods):
-            color = (0, 0, 200) if i == selected_index else (0, 0, 0)
-            prefix = "► " if i == selected_index else "  "
-            
-            method_text = render_text(f"{prefix}{name}", 'medium', color)
-            screen.blit(method_text, (300, start_y + i * 50))
+        button_height = 50
+        button_width = 500
         
-        # Instructions
-        instructions = [
-            "Use UP/DOWN arrows to select",
-            "Press ENTER to confirm",
-            "Press L to change language",
-            "Press ESC to quit"
-        ]
+        for i, (method, name) in enumerate(available_methods):
+            button_rect = pygame.Rect(SCREEN_WIDTH//2 - button_width//2, 
+                                    start_y + i * (button_height + 10), 
+                                    button_width, button_height)
+            
+            is_selected = (i == selected_index)
+            button_color = UI_COLORS['accent'] if is_selected else UI_COLORS['secondary']
+            text_color = UI_COLORS['text'] if is_selected else UI_COLORS['white']
+            
+            draw_button(screen, name, button_rect, button_color, text_color, 'medium', is_selected)
+        
+        # Instructions panel
+        instruction_y = start_y + len(available_methods) * (button_height + 10) + 30
+        instruction_rect = pygame.Rect(50, instruction_y, SCREEN_WIDTH - 100, 180)
+        pygame.draw.rect(screen, UI_COLORS['white'], instruction_rect, border_radius=10)
+        pygame.draw.rect(screen, UI_COLORS['primary'], instruction_rect, 2, border_radius=10)
+        
+        if current_language == 'hindi':
+            instructions = [
+                "चुनने के लिए 'UP/DOWN' तीर का उपयोग करें",
+                "पुष्टि के लिए 'ENTER' दबाएं",
+                "भाषा बदलने के लिए 'L' दबाएं",
+                "बाहर निकलने के लिए 'ESC' दबाएं"
+            ]
+        else:
+         instructions = [
+        "Use UP/DOWN arrows to select",
+        "Press ENTER to confirm",
+        "Press L to change language",
+        "Press ESC to quit"
+    ]
+
         
         for i, instruction in enumerate(instructions):
-            inst_text = render_text(instruction, 'small', (100, 100, 100))
-            screen.blit(inst_text, (300, start_y + len(available_methods) * 50 + 50 + i * 30))
+            inst_text = render_text(instruction, 'small', UI_COLORS['text'])
+            screen.blit(inst_text, (70, instruction_y + 20 + i * 30))
         
         # Test option
-        test_text = render_text(ui_text['method_test'], 'small', (0, 150, 0))
-        test_rect = test_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT - 100))
-        screen.blit(test_text, test_rect)
+        test_rect = pygame.Rect(SCREEN_WIDTH//2 - 200, SCREEN_HEIGHT - 120, 400, 40)
+        draw_button(screen, ui_text['method_test'], test_rect, UI_COLORS['success'], UI_COLORS['white'], 'small')
         
         pygame.display.flip()
         
@@ -399,37 +587,116 @@ def select_input_method():
                 elif event.key == pygame.K_l:
                     new_lang = 'hindi' if current_language == 'english' else 'english'
                     update_language(new_lang)
-                    available_methods = get_available_methods()  # Update method names
+                    available_methods = get_available_methods()
                     selected_index = min(selected_index, len(available_methods) - 1)
                 elif event.key == pygame.K_t:
                     show_efficiency_analysis()
         
         clock.tick(60)
 
+
 def test_input_method():
-    """Test the current input method"""
+    """Test the current input method with enhanced UI"""
     if current_input_method not in input_handlers:
         return False
     
     handler = input_handlers[current_input_method]
     
-    # Show test screen
-    screen.fill((255, 255, 255))
-    test_text = render_text(f"Testing {current_input_method} input...", 'large', (0, 0, 200))
-    test_rect = test_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 - 100))
-    screen.blit(test_text, test_rect)
+    # Enhanced test screen with animated background
+    animation_time = 0
     
-    # Show a test word
+    # Show initial test screen
+    for frame in range(60):  # 1 second animation
+        animation_time += 0.1
+        draw_animated_background(screen, animation_time)
+        
+        # Main container with gradient background
+        container_rect = pygame.Rect(100, 150, SCREEN_WIDTH - 200, SCREEN_HEIGHT - 300)
+        draw_gradient_rect(screen, UI_COLORS['primary'], UI_COLORS['secondary'], container_rect)
+        pygame.draw.rect(screen, UI_COLORS['white'], container_rect, 3, border_radius=15)
+        
+        # Title with shadow effect
+        title_shadow = render_text(f"Testing {current_input_method.capitalize()} Input", 'large', (50, 50, 50))  # darker gray as shadow
+        title_text = render_text(f"Testing {current_input_method.capitalize()} Input", 'large', UI_COLORS['white'])
+        
+        shadow_rect = title_shadow.get_rect(center=(SCREEN_WIDTH//2 + 2, 222))
+        title_rect = title_text.get_rect(center=(SCREEN_WIDTH//2, 220))
+        
+        screen.blit(title_shadow, shadow_rect)
+        screen.blit(title_text, title_rect)
+        
+        # Animated loading indicator
+        loading_text = render_text("Initializing test environment...", 'medium', UI_COLORS['white'])
+        loading_rect = loading_text.get_rect(center=(SCREEN_WIDTH//2, 280))
+        screen.blit(loading_text, loading_rect)
+        
+        # Progress bar
+        progress_width = 300
+        progress_rect = pygame.Rect(SCREEN_WIDTH//2 - progress_width//2, 320, progress_width, 20)
+        pygame.draw.rect(screen, UI_COLORS['white'], progress_rect, border_radius=10)
+        
+        fill_width = int((frame / 60) * progress_width)
+        if fill_width > 0:
+            fill_rect = pygame.Rect(progress_rect.x, progress_rect.y, fill_width, 20)
+            pygame.draw.rect(screen, UI_COLORS['accent'], fill_rect, border_radius=10)
+        
+        pygame.display.flip()
+        clock.tick(60)
+    
+    # Choose test word and color
     test_word = random.choice(colors)
     test_color = random.choice(colors)
     
-    word_text = render_text(test_word[0], 'large', test_color[1])
-    word_rect = word_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2))
+    # Main test interface
+    draw_animated_background(screen, animation_time)
+    
+    # Main container
+    container_rect = pygame.Rect(100, 100, SCREEN_WIDTH - 200, SCREEN_HEIGHT - 200)
+    draw_gradient_rect(screen, UI_COLORS['white'], UI_COLORS['background'], container_rect)
+    pygame.draw.rect(screen, UI_COLORS['primary'], container_rect, 3, border_radius=15)
+    
+    # Header section
+    header_rect = pygame.Rect(container_rect.x, container_rect.y, container_rect.width, 80)
+    draw_gradient_rect(screen, UI_COLORS['secondary'], UI_COLORS['primary'], header_rect)
+    
+    header_text = render_text("INPUT METHOD TEST", 'large', UI_COLORS['white'])
+    header_text_rect = header_text.get_rect(center=(SCREEN_WIDTH//2, header_rect.centery))
+    screen.blit(header_text, header_text_rect)
+    
+    # Method badge
+    method_badge = pygame.Rect(container_rect.x + 20, container_rect.y + 100, 200, 40)
+    pygame.draw.rect(screen, UI_COLORS['accent'], method_badge, border_radius=20)
+    
+    method_text = render_text(f"Method: {current_input_method.capitalize()}", 'small', UI_COLORS['text'])
+    method_text_rect = method_text.get_rect(center=method_badge.center)
+    screen.blit(method_text, method_text_rect)
+    
+    # Test word container with shadow
+    word_container = pygame.Rect(SCREEN_WIDTH//2 - 150, SCREEN_HEIGHT//2 - 100, 300, 150)
+    shadow_container = pygame.Rect(word_container.x + 5, word_container.y + 5, word_container.width, word_container.height)
+    
+    pygame.draw.rect(screen, (0, 0, 0, 50), shadow_container, border_radius=15)
+    pygame.draw.rect(screen, UI_COLORS['white'], word_container, border_radius=15)
+    pygame.draw.rect(screen, test_color[1], word_container, 3, border_radius=15)
+    
+    # Test word with enhanced styling
+    word_text = render_text(test_word[0], 'title', test_color[1])
+    word_rect = word_text.get_rect(center=word_container.center)
     screen.blit(word_text, word_rect)
     
-    instruction_text = render_text("Select the color of this word", 'medium', (0, 0, 0))
-    instruction_rect = instruction_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 + 100))
+    # Instruction panel
+    instruction_panel = pygame.Rect(container_rect.x + 50, container_rect.y + container_rect.height - 120, 
+                                   container_rect.width - 100, 80)
+    pygame.draw.rect(screen, UI_COLORS['background'], instruction_panel, border_radius=10)
+    pygame.draw.rect(screen, UI_COLORS['secondary'], instruction_panel, 2, border_radius=10)
+    
+    instruction_text = render_text("Select the COLOR of the word above", 'medium', UI_COLORS['text'])
+    instruction_rect = instruction_text.get_rect(center=(instruction_panel.centerx, instruction_panel.centery - 10))
     screen.blit(instruction_text, instruction_rect)
+    
+    hint_text = render_text("(Focus on the color, not the word itself)", 'small', UI_COLORS['light_text'])
+    hint_rect = hint_text.get_rect(center=(instruction_panel.centerx, instruction_panel.centery + 15))
+    screen.blit(hint_text, hint_rect)
     
     pygame.display.flip()
     
@@ -438,32 +705,92 @@ def test_input_method():
     result = handler.get_input(colors, screen, ui_text, fonts)
     end_time = time.time()
     
-    # Show results
-    screen.fill((255, 255, 255))
+    # Enhanced results screen
+    response_time = end_time - start_time
+    
+    # Results background
+    draw_animated_background(screen, animation_time + 2)
+    
+    # Results container
+    results_rect = pygame.Rect(150, 120, SCREEN_WIDTH - 300, SCREEN_HEIGHT - 240)
+    draw_gradient_rect(screen, UI_COLORS['white'], UI_COLORS['background'], results_rect)
+    pygame.draw.rect(screen, UI_COLORS['primary'], results_rect, 3, border_radius=15)
+    
+    # Results header
     if result['success']:
-        result_text = render_text("Test Successful!", 'large', (0, 200, 0))
-        if result['color_index'] is not None:
-            selected_color = colors[result['color_index']][0]
-            detail_text = render_text(f"Selected: {selected_color}", 'medium', (0, 0, 0))
-        else:
-            detail_text = render_text("No color selected", 'medium', (0, 0, 0))
+        header_color = UI_COLORS['success']
+        header_text = "TEST SUCCESSFUL!"
+        status_icon = ""
     else:
-        result_text = render_text("Test Failed!", 'large', (255, 0, 0))
-        detail_text = render_text(f"Error: {result['message']}", 'medium', (0, 0, 0))
+        header_color = UI_COLORS['error']
+        header_text = "TEST FAILED!"
+        status_icon = ""
     
-    result_rect = result_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 - 50))
-    screen.blit(result_text, result_rect)
+    header_rect = pygame.Rect(results_rect.x, results_rect.y, results_rect.width, 80)
+    pygame.draw.rect(screen, header_color, header_rect, border_radius=15)
     
-    detail_rect = detail_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2))
-    screen.blit(detail_text, detail_rect)
+    header_surface = render_text(header_text, 'large', UI_COLORS['white'])
+    header_surface_rect = header_surface.get_rect(center=(SCREEN_WIDTH//2, header_rect.centery))
+    screen.blit(header_surface, header_surface_rect)
     
-    time_text = render_text(f"Time taken: {end_time - start_time:.2f}s", 'small', (0, 0, 100))
-    time_rect = time_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 + 50))
-    screen.blit(time_text, time_rect)
+    # Results content area
+    content_y = results_rect.y + 100
     
-    continue_text = render_text("Press any key to continue", 'small', (100, 100, 100))
-    continue_rect = continue_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 + 100))
-    screen.blit(continue_text, continue_rect)
+    # Response time card
+    time_card = pygame.Rect(results_rect.x + 50, content_y, results_rect.width - 100, 60)
+    pygame.draw.rect(screen, UI_COLORS['background'], time_card, border_radius=10)
+    pygame.draw.rect(screen, UI_COLORS['secondary'], time_card, 2, border_radius=10)
+    
+    time_label = render_text("Response Time:", 'medium', UI_COLORS['text'])
+    time_value = render_text(f"{response_time:.2f} seconds", 'medium', UI_COLORS['primary'])
+    
+    screen.blit(time_label, (time_card.x + 20, time_card.y + 15))
+    screen.blit(time_value, (time_card.x + 250, time_card.y + 15))
+    
+    content_y += 80
+    
+    # Selection details card
+    if result['success'] and result['color_index'] is not None:
+        selection_card = pygame.Rect(results_rect.x + 50, content_y, results_rect.width - 100, 60)
+        pygame.draw.rect(screen, UI_COLORS['background'], selection_card, border_radius=10)
+        pygame.draw.rect(screen, UI_COLORS['success'], selection_card, 2, border_radius=10)
+        
+        selected_color = colors[result['color_index']][0]
+        selection_text = render_text(f"Selected Color: {selected_color}", 'medium', UI_COLORS['text'])
+        screen.blit(selection_text, (selection_card.x + 20, selection_card.y + 20))
+        
+        content_y += 80
+    
+    # Error details if applicable
+    if not result['success']:
+        error_card = pygame.Rect(results_rect.x + 50, content_y, results_rect.width - 100, 60)
+        pygame.draw.rect(screen, UI_COLORS['background'], error_card, border_radius=10)
+        pygame.draw.rect(screen, UI_COLORS['error'], error_card, 2, border_radius=10)
+        
+        error_text = render_text(f"Error: {result['message']}", 'medium', UI_COLORS['text'])
+        screen.blit(error_text, (error_card.x + 20, error_card.y + 20))
+        
+        content_y += 80
+    
+    # Performance indicator
+    if result['success']:
+        if response_time < 2.0:
+            performance_text = "Excellent Response Time!"
+            performance_color = UI_COLORS['success']
+        elif response_time < 4.0:
+            performance_text = " Good Response Time"
+            performance_color = UI_COLORS['warning']
+        else:
+            performance_text = "Consider Optimizing Response Time"
+            performance_color = UI_COLORS['error']
+        
+        performance_surface = render_text(performance_text, 'medium', performance_color)
+        performance_rect = performance_surface.get_rect(center=(SCREEN_WIDTH//2, content_y + 30))
+        screen.blit(performance_surface, performance_rect)
+    
+    # Continue button
+    continue_btn = pygame.Rect(SCREEN_WIDTH//2 - 100, results_rect.y + results_rect.height - 80, 200, 50)
+    draw_button(screen, "Continue", continue_btn, UI_COLORS['accent'], UI_COLORS['text'], 'medium')
     
     pygame.display.flip()
     
@@ -478,8 +805,9 @@ def test_input_method():
     
     return True
 
+
 def play_game():
-    """Main game loop"""
+    """Main game loop with enhanced UI"""
     if current_input_method not in input_handlers:
         return False
     
@@ -489,22 +817,82 @@ def play_game():
     total_questions = 5
     score = 0
     response_times = []
+    animation_time = 0
     
     # Get current stats
     current_stats = game_stats[current_language][current_input_method]
     
+    # Game start animation
+    for frame in range(90):  # 1.5 second countdown
+        animation_time += 0.1
+        draw_animated_background(screen, animation_time)
+        
+        # Main container
+        container_rect = pygame.Rect(200, 200, SCREEN_WIDTH - 400, SCREEN_HEIGHT - 400)
+        draw_gradient_rect(screen, UI_COLORS['primary'], UI_COLORS['secondary'], container_rect)
+        pygame.draw.rect(screen, UI_COLORS['white'], container_rect, 3, border_radius=20)
+        
+        # Countdown number
+        countdown_num = 3 - (frame // 30)
+        if countdown_num > 0:
+            countdown_text = render_text(str(countdown_num), 'title', UI_COLORS['accent'])
+            countdown_rect = countdown_text.get_rect(center=container_rect.center)
+            screen.blit(countdown_text, countdown_rect)
+        else:
+            ready_text = render_text("Let's Play!", 'large', UI_COLORS['white'])
+            ready_rect = ready_text.get_rect(center=container_rect.center)
+            screen.blit(ready_text, ready_rect)
+        
+        # Game info
+        info_text = render_text(f"Method: {current_input_method.capitalize()} | Language: {current_language.capitalize()}", 
+                               'medium', UI_COLORS['white'])
+        info_rect = info_text.get_rect(center=(container_rect.centerx, container_rect.centery + 80))
+        screen.blit(info_text, info_rect)
+        
+        pygame.display.flip()
+        clock.tick(60)
+    
     while question_count < total_questions:
-        # Clear screen
-        screen.fill((255, 255, 255))
+        animation_time += 0.1
         
-        # Show question info
-        question_text = render_text(f"{ui_text['question']} {question_count + 1}/{total_questions}", 'medium', (0, 0, 0))
-        score_text = render_text(f"{ui_text['score']}: {score}", 'medium', (0, 0, 0))
-        method_text = render_text(f"{ui_text['input_method']}: {current_input_method}", 'small', (0, 0, 100))
+        # Enhanced game interface
+        draw_animated_background(screen, animation_time)
         
-        screen.blit(question_text, (50, 50))
-        screen.blit(score_text, (SCREEN_WIDTH - 250, 50))
-        screen.blit(method_text, (50, 100))
+        # Top status bar
+        status_bar = pygame.Rect(0, 0, SCREEN_WIDTH, 80)
+        draw_gradient_rect(screen, UI_COLORS['dark_bg'], UI_COLORS['primary'], status_bar)
+        
+        # Progress indicators
+        progress_width = 300
+        progress_x = SCREEN_WIDTH//2 - progress_width//2
+        progress_rect = pygame.Rect(progress_x, 25, progress_width, 30)
+        pygame.draw.rect(screen, UI_COLORS['white'], progress_rect, border_radius=15)
+        
+        # Fill progress
+        fill_width = int((question_count / total_questions) * progress_width)
+        if fill_width > 0:
+            fill_rect = pygame.Rect(progress_rect.x, progress_rect.y, fill_width, 30)
+            pygame.draw.rect(screen, UI_COLORS['accent'], fill_rect, border_radius=15)
+        
+        # Question counter
+        question_text = render_text(f"Question {question_count + 1}/{total_questions}", 'medium', UI_COLORS['white'])
+        screen.blit(question_text, (50, 25))
+        
+        # Score with animated background
+        score_bg = pygame.Rect(SCREEN_WIDTH - 200, 15, 150, 50)
+        pygame.draw.rect(screen, UI_COLORS['accent'], score_bg, border_radius=25)
+        
+        score_text = render_text(f"Score: {score}", 'medium', UI_COLORS['text'])
+        score_rect = score_text.get_rect(center=score_bg.center)
+        screen.blit(score_text, score_rect)
+        
+        # Input method badge
+        method_badge = pygame.Rect(20, SCREEN_HEIGHT - 100, 200, 40)
+        pygame.draw.rect(screen, UI_COLORS['secondary'], method_badge, border_radius=20)
+        
+        method_text = render_text(f" {current_input_method.capitalize()}", 'small', UI_COLORS['white'])
+        method_text_rect = method_text.get_rect(center=method_badge.center)
+        screen.blit(method_text, method_text_rect)
         
         # Choose random word and color
         word_index = random.randint(0, len(colors) - 1)
@@ -514,24 +902,77 @@ def play_game():
         word_name = colors[word_index][0]
         color_rgb = colors[color_index][1]
         
-        # Display the word in the color
-        word_surface = render_text(word_name, 'large', color_rgb)
-        word_rect = word_surface.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 - 50))
+        # Main word display with enhanced styling
+        word_container = pygame.Rect(SCREEN_WIDTH//2 - 200, SCREEN_HEIGHT//2 - 120, 400, 200)
+        
+        # Shadow effect
+        shadow_container = pygame.Rect(word_container.x + 8, word_container.y + 8, 
+                                      word_container.width, word_container.height)
+        pygame.draw.rect(screen, (50, 50, 50), shadow_container, border_radius=20)
+
+        # Main container
+        pygame.draw.rect(screen, UI_COLORS['white'], word_container, border_radius=20)
+        pygame.draw.rect(screen, color_rgb, word_container, 5, border_radius=20)
+        
+        # Stroop conflict indicator
+        if is_stroop_conflict:
+            conflict_indicator = pygame.Rect(word_container.x + 10, word_container.y + 10, 30, 30)
+            pygame.draw.circle(screen, UI_COLORS['warning'], conflict_indicator.center, 15)
+            conflict_text = render_text("!", 'small', UI_COLORS['white'])
+            conflict_text_rect = conflict_text.get_rect(center=conflict_indicator.center)
+            screen.blit(conflict_text, conflict_text_rect)
+        
+        # Display the word with glow effect
+        word_surface = render_text(word_name, 'title', color_rgb)
+        word_rect = word_surface.get_rect(center=word_container.center)
+        
+        # Glow effect
+        for offset in [(2, 2), (-2, -2), (2, -2), (-2, 2)]:
+            glow_surface = render_text(word_name, 'title', tuple(min(255, c + 50) for c in color_rgb))
+            glow_rect = word_surface.get_rect(center=(word_container.center[0] + offset[0], 
+                                                     word_container.center[1] + offset[1]))
+            screen.blit(glow_surface, glow_rect)
+        
         screen.blit(word_surface, word_rect)
         
-        # Show instruction
-        instruction_surface = render_text(ui_text['instruction'], 'medium', (0, 0, 0))
-        instruction_rect = instruction_surface.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 + 50))
-        screen.blit(instruction_surface, instruction_rect)
+        # Instruction panel with animation
+        instruction_panel = pygame.Rect(100, SCREEN_HEIGHT//2 + 120, SCREEN_WIDTH - 200, 100)
+        panel_alpha = int(200 + 55 * math.sin(animation_time * 2))
+        instruction_color = (*UI_COLORS['background'], panel_alpha)
+        
+        pygame.draw.rect(screen, instruction_color[:3], instruction_panel, border_radius=15)
+        pygame.draw.rect(screen, UI_COLORS['primary'], instruction_panel, 3, border_radius=15)
+        
+        # Main instruction
+        instruction_text = render_text(" " + ui_text['instruction'], 'large', UI_COLORS['text'])
+        instruction_rect = instruction_text.get_rect(center=(instruction_panel.centerx, instruction_panel.centery - 15))
+        screen.blit(instruction_text, instruction_rect)
+        
+        # Hint text
+        hint_text = render_text("(Ignore the word, focus on the COLOR)", 'small', UI_COLORS['light_text'])
+        hint_rect = hint_text.get_rect(center=(instruction_panel.centerx, instruction_panel.centery + 20))
+        screen.blit(hint_text, hint_rect)
         
         pygame.display.flip()
         
-        # Wait a moment
-        time.sleep(0.5)
+        # Wait a moment with animated loading
+        for i in range(30):  # 0.5 second
+            # Add subtle loading animation
+            loading_dots = "." * ((i // 10) + 1)
+            loading_text = render_text(f"Get ready{loading_dots}", 'small', UI_COLORS['light_text'])
+            loading_rect = loading_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT - 50))
+            
+            # Clear just the loading area
+            clear_rect = pygame.Rect(loading_rect.x - 50, loading_rect.y - 10, 
+                                   loading_rect.width + 100, loading_rect.height + 20)
+            pygame.draw.rect(screen, UI_COLORS['game_bg'], clear_rect)
+            screen.blit(loading_text, loading_rect)
+            
+            pygame.display.update(clear_rect)
+            clock.tick(60)
         
         # Get input
         start_time = time.time()
-        
         result = handler.get_input(colors, screen, ui_text, fonts)
         end_time = time.time()
         
@@ -551,41 +992,104 @@ def play_game():
         
         # Check answer
         if result['success'] and result.get('color_index') is not None:
-          is_correct = result['color_index'] == color_index
+            is_correct = result['color_index'] == color_index
         else:
-          is_correct = False
-
-        # Show result
-        screen.fill((255, 255, 255))
-        screen.blit(word_surface, word_rect)
+            is_correct = False
+        
+        # Enhanced result display
+        draw_animated_background(screen, animation_time)
+        
+        # Result container
+        result_container = pygame.Rect(150, 150, SCREEN_WIDTH - 300, SCREEN_HEIGHT - 300)
         
         if is_correct:
+            result_color = UI_COLORS['success']
+            result_text = "" + ui_text['correct']
+            result_icon = ""
             score += 1
-            result_text = render_text(ui_text['correct'], 'large', (0, 255, 0))
         else:
-            result_text = render_text(ui_text['wrong'], 'large', (255, 0, 0))
+            result_color = UI_COLORS['error']
+            result_text = " " + ui_text['wrong']
+            result_icon = ""
+        
+        # Shadow
+        shadow_rect = pygame.Rect(result_container.x + 5, result_container.y + 5, 
+                                 result_container.width, result_container.height)
+        pygame.draw.rect(screen, (0, 0, 0, 50), shadow_rect, border_radius=20)
+        
+        # Main container
+        pygame.draw.rect(screen, UI_COLORS['white'], result_container, border_radius=20)
+        pygame.draw.rect(screen, result_color, result_container, 5, border_radius=20)
+        
+        # Result header
+        header_rect = pygame.Rect(result_container.x, result_container.y, 
+                                 result_container.width, 80)
+        pygame.draw.rect(screen, result_color, header_rect, border_radius=20)
+        
+        result_surface = render_text(result_text, 'large', UI_COLORS['white'])
+        result_surface_rect = result_surface.get_rect(center=(result_container.centerx, header_rect.centery))
+        screen.blit(result_surface, result_surface_rect)
+        
+        # Show the word again
+        word_display_rect = pygame.Rect(result_container.x + 50, result_container.y + 100, 
+                                       result_container.width - 100, 80)
+        pygame.draw.rect(screen, UI_COLORS['background'], word_display_rect, border_radius=10)
+        pygame.draw.rect(screen, color_rgb, word_display_rect, 3, border_radius=10)
+        
+        word_again = render_text(word_name, 'large', color_rgb)
+        word_again_rect = word_again.get_rect(center=word_display_rect.center)
+        screen.blit(word_again, word_again_rect)
+        
+        # Answer details
+        details_y = result_container.y + 200
+        
+        if not is_correct and result['color_index'] is not None and 0 <= result['color_index'] < len(colors):
+            user_answer = colors[result['color_index']][0]
+            correct_answer = colors[color_index][0]
             
-            # Show correct answer
-            if result['color_index'] is not None and 0 <= result['color_index'] < len(colors):
-                user_answer = colors[result['color_index']][0]
-                correct_answer = colors[color_index][0]
-                
-                user_text = render_text(f"Your answer: {user_answer}", 'medium', (0, 0, 0))
-                correct_text = render_text(f"Correct answer: {correct_answer}", 'medium', (0, 0, 0))
-                
-                screen.blit(user_text, (SCREEN_WIDTH//2 - 200, SCREEN_HEIGHT//2 + 150))
-                screen.blit(correct_text, (SCREEN_WIDTH//2 - 200, SCREEN_HEIGHT//2 + 190))
+            # Your answer
+            user_card = pygame.Rect(result_container.x + 50, details_y, 
+                                   result_container.width - 100, 40)
+            pygame.draw.rect(screen, UI_COLORS['error'], user_card, border_radius=10)
+            
+            user_text = render_text(f"Your: {user_answer}", 'medium', UI_COLORS['white'])
+            user_text_rect = user_text.get_rect(center=user_card.center)
+            screen.blit(user_text, user_text_rect)
+            
+            # Correct answer
+            correct_card = pygame.Rect(result_container.x + 50, details_y + 50, 
+                                      result_container.width - 100, 40)
+            pygame.draw.rect(screen, UI_COLORS['success'], correct_card, border_radius=10)
+            
+            correct_text = render_text(f"Correct: {correct_answer}", 'medium', UI_COLORS['white'])
+            correct_text_rect = correct_text.get_rect(center=correct_card.center)
+            screen.blit(correct_text, correct_text_rect)
+            
+            details_y += 100
         
-        result_rect = result_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 + 100))
-        screen.blit(result_text, result_rect)
+        # Response time with performance indicator
+        time_card = pygame.Rect(result_container.x + 50, details_y, 
+                               result_container.width - 100, 50)
         
-        # Show response time
-        time_text = render_text(f"Time: {response_time:.2f}s", 'small', (0, 0, 100))
-        time_rect = time_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 + 250))
-        screen.blit(time_text, time_rect)
+        # Color code based on response time
+        if response_time < 2.0:
+            time_color = UI_COLORS['success']
+            time_icon = ""
+        elif response_time < 4.0:
+            time_color = UI_COLORS['warning']
+            time_icon = ""
+        else:
+            time_color = UI_COLORS['error']
+            time_icon = ""
+        
+        pygame.draw.rect(screen, time_color, time_card, border_radius=10)
+        
+        time_text = render_text(f"{time_icon} Time: {response_time:.2f}s", 'medium', UI_COLORS['white'])
+        time_text_rect = time_text.get_rect(center=time_card.center)
+        screen.blit(time_text, time_text_rect)
         
         pygame.display.flip()
-        time.sleep(2)
+        time.sleep(2.5)
         
         question_count += 1
     
@@ -596,12 +1100,13 @@ def play_game():
     
     # Show final results
     show_final_results(score, response_times)
+    
     # Calculate and store efficiency
     if response_times:
-     avg_time = sum(response_times) / len(response_times)
-     efficiency = score / avg_time if avg_time > 0 else 0
-     update_efficiency_db(current_input_method, current_language, efficiency)
-
+        avg_time = sum(response_times) / len(response_times)
+        efficiency = score / avg_time if avg_time > 0 else 0
+        update_efficiency_db(current_input_method, current_language, efficiency)
+    
     return True
 
 def show_final_results(score, response_times):

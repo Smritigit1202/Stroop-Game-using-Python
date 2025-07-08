@@ -85,6 +85,12 @@ recognizer.energy_threshold = 200
 recognizer.dynamic_energy_threshold = True
 recognizer.dynamic_energy_adjustment_damping = 0.15
 recognizer.dynamic_energy_ratio = 1.5
+def load_fonts():
+    return {
+        'large': pygame.font.Font(None, 48),
+        'medium': pygame.font.Font(None, 36),
+        'small': pygame.font.Font(None, 24)
+    }
 
 class AudioRecoVorder:
     """Audio recording class with multiple fallback methods"""
@@ -614,7 +620,7 @@ def record_and_recognize_audio(current_language, colors):
         print(error_msg)
         return None, error_msg
 
-def get_voice_input_with_visual_feedback(screen, ui_text, current_language, colors):
+def get_voice_input_with_visual_feedback(screen, ui_text, current_language, colors, fonts):
     """Get voice input with visual countdown and feedback"""
 
     # Ensure pygame is initialized
@@ -625,7 +631,7 @@ def get_voice_input_with_visual_feedback(screen, ui_text, current_language, colo
 
     # Phase 1: Get ready (2 seconds)
     screen.fill((255, 255, 255))
-    ready_text = pygame.font.Font(None, 48).render(ui_text.get('get_ready', 'Get Ready!'), True, (255, 100, 0))
+    ready_text = fonts['large'].render(ui_text.get('get_ready', 'Get Ready!'), True, (255, 100, 0))
     ready_rect = ready_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
     screen.blit(ready_text, ready_rect)
 
@@ -643,12 +649,13 @@ def get_voice_input_with_visual_feedback(screen, ui_text, current_language, colo
         clock.tick(60)
 
     # Phase 2: Recording with countdown
+    total_start_time = time.time()
     recording_start = time.time()
     result_queue = Queue()
 
-    def recording_thread():
-        color_index, message = record_and_recognize_audio(current_language, colors)
-        result_queue.put((color_index, message))
+def recording_thread():
+    color_index, message = record_and_recognize_audio(current_language, colors)
+    result_queue.put((color_index, message))
 
     thread = threading.Thread(target=recording_thread)
     thread.daemon = True
@@ -659,7 +666,7 @@ def get_voice_input_with_visual_feedback(screen, ui_text, current_language, colo
         screen.fill((255, 100, 100))
 
         # Show recording indicator
-        recording_text = pygame.font.Font(None, 48).render(ui_text.get('recording', 'Recording...'), True, (255, 255, 255))
+        recording_text = fonts['large'].render(ui_text.get('recording', 'Recording...'), True, (255, 255, 255))
         recording_rect = recording_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2 - 50))
         screen.blit(recording_text, recording_rect)
 
@@ -678,19 +685,22 @@ def get_voice_input_with_visual_feedback(screen, ui_text, current_language, colo
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                return None, "quit"
+                return None, "quit", 0.0
 
         clock.tick(60)
 
     # Phase 3: Processing
     screen.fill((100, 100, 255))
-    processing_text = pygame.font.Font(None, 48).render(ui_text.get('processing', 'Processing...'), True, (255, 255, 255))
+    processing_text = fonts['large'].render(ui_text.get('processing', 'Processing...'), True, (255, 255, 255))
     processing_rect = processing_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
     screen.blit(processing_text, processing_rect)
     pygame.display.flip()
 
     # Wait for recording thread to finish and get result
     thread.join()
+    total_end_time = time.time()
+    total_response_time = total_end_time - total_start_time
+
     if not result_queue.empty():
         color_index, message = result_queue.get()
         return color_index, message
@@ -698,57 +708,6 @@ def get_voice_input_with_visual_feedback(screen, ui_text, current_language, colo
         return None, "No result returned"
 
     
-def recording_thread():
- color_index, message = record_and_recognize_audio(current_language, colors)
- result_queue.put((color_index, message))
- 
- thread = threading.Thread(target=recording_thread)
- thread.daemon = True
- thread.start()
-
-    # Visual countdown during recording
- while time.time() - recording_start < audio_recorder.recording_duration:
-        screen.fill((255, 100, 100))
-        
-        # Show recording indicator
-        recording_text = pygame.font.Font(None, 48).render(ui_text.get('recording', 'Recording...'), True, (255, 255, 255))
-        recording_rect = recording_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2 - 50))
-        screen.blit(recording_text, recording_rect)
-        
-        # Show countdown
-        remaining = audio_recorder.recording_duration - (time.time() - recording_start)
-        countdown_text = pygame.font.Font(None, 32).render(f"Time remaining: {remaining:.1f}s", True, (255, 255, 255))
-        countdown_rect = countdown_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2 + 50))
-        screen.blit(countdown_text, countdown_rect)
-        
-        # Show instruction
-        instruction_text = pygame.font.Font(None, 24).render("Say the COLOR NAME of the word shown", True, (255, 255, 255))
-        instruction_rect = instruction_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2 + 100))
-        screen.blit(instruction_text, instruction_rect)
-        
-        pygame.display.flip()
-        
-        # Handle events
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return None, "quit"
-        
-        time.sleep(0.1)
-    
-    # Phase 3: Processing
- screen.fill((100, 100, 255))
- processing_text = pygame.font.Font(None, 48).render("Processing...", True, (255, 255, 255))
- processing_rect = processing_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
- screen.blit(processing_text, processing_rect)
- pygame.display.flip()
-
-# Wait for recording thread to finish and get result
- thread.join()
- if not result_queue.empty():
-    color_index, message = result_queue.get()
-    return color_index, message
- else:
-    return None, "No result returned"
 
 
 def select_audio_method(screen):
@@ -758,8 +717,8 @@ def select_audio_method(screen):
     
      if not available_methods:
         screen.fill((255, 255, 255))
-        screen.blit(pygame.font.Font(None, 48).render("No audio methods available!", True, (255, 0, 0)), (200, 300))
-        screen.blit(pygame.font.Font(None, 32).render("Install audio libraries and restart", True, (0, 0, 0)), (200, 350))
+        screen.blit(fonts['large'].render("No audio methods available!", True, (255, 0, 0)), (200, 300))
+        screen.blit(fonts['medium'].render("Install audio libraries and restart", True, (0, 0, 0)), (200, 350))
         pygame.display.flip()
         time.sleep(3)
         return None
@@ -772,8 +731,8 @@ def select_audio_method(screen):
     
      while True:
         screen.fill((255, 255, 255))
-        screen.blit(pygame.font.Font(None, 48).render("Select Audio Method", True, (0, 0, 200)), (300, 100))
-        
+        screen.blit(fonts['large'].render("Select Audio Method", True, (0, 0, 200)), (300, 100))
+
         method_descriptions = {
             'sounddevice': 'SoundDevice (Recommended)',
             'pyaudio': 'PyAudio (Original)',
@@ -814,9 +773,9 @@ def select_audio_method(screen):
 def test_microphone(screen, ui_text):
     """Test microphone functionality with GUI"""
     screen.fill((255, 255, 255))
-    screen.blit(pygame.font.Font(None, 48).render("Testing Microphone...", True, (0, 0, 200)), (250, 200))
-    screen.blit(pygame.font.Font(None, 32).render("You will have 3 seconds to speak!", True, (0, 0, 0)), (200, 250))
-    screen.blit(pygame.font.Font(None, 24).render("Press any key to start test", True, (100, 100, 100)), (300, 300))
+    screen.blit(fonts['large'].render("Testing Microphone...", True, (0, 0, 200)), (250, 200))
+    screen.blit(fonts['medium'].render("You will have 3 seconds to speak!", True, (0, 0, 0)), (200, 250))
+    screen.blit(fonts['small'].render("Press any key to start test", True, (100, 100, 100)), (300, 300))
     pygame.display.flip()
     
     clock = pygame.time.Clock()
@@ -832,22 +791,29 @@ def test_microphone(screen, ui_text):
         clock.tick(60)
     
     # Run test with dummy parameters
-    colors = [("red", (255, 0, 0)), ("green", (0, 255, 0)), ("blue", (0, 0, 255))]
+    colors = [
+    ("red", (255, 0, 0)),
+    ("green", (0, 255, 0)),
+    ("blue", (0, 0, 255)),
+    ("yellow", (255, 255, 0)),
+    ("pink", (255, 105, 180))  # or use (255, 192, 203) for lighter pink
+]
+    fonts = load_fonts()
     color_index, message = get_voice_input_with_visual_feedback(screen, ui_text, 'english', colors)
     
     # Show results
     screen.fill((255, 255, 255))
     if color_index is not None:
-        screen.blit(pygame.font.Font(None, 48).render("Test Successful!", True, (0, 200, 0)), (300, 150))
-        screen.blit(pygame.font.Font(None, 32).render(f"Recognized: {message}", True, (0, 0, 0)), (200, 200))
+        screen.blit(fonts['large'].render("Test Successful!", True, (0, 200, 0)), (300, 150))
+        screen.blit(fonts['medium'].render(f"Recognized: {message}", True, (0, 0, 0)), (200, 200))
         if color_index >= 0:
             color_name = colors[color_index][0]
-            screen.blit(pygame.font.Font(None, 32).render(f"Matched color: {color_name}", True, (0, 0, 100)), (200, 250))
+            screen.blit(fonts['small'].render(f"Matched color: {color_name}", True, (0, 0, 100)), (200, 250))
     else:
-        screen.blit(pygame.font.Font(None, 48).render("Test Failed!", True, (255, 0, 0)), (300, 150))
-        screen.blit(pygame.font.Font(None, 32).render(f"Issue: {message}", True, (0, 0, 0)), (200, 200))
-    
-    screen.blit(pygame.font.Font(None, 24).render("Press any key to continue", True, (100, 100, 100)), (300, 350))
+        screen.blit(fonts['large'].render("Test Failed!", True, (255, 0, 0)), (300, 150))
+        screen.blit(fonts['medium'].render(f"Issue: {message}", True, (0, 0, 0)), (200, 200))
+
+    screen.blit(fonts['small'].render("Press any key to continue", True, (100, 100, 100)), (300, 350))
     pygame.display.flip()
     
     waiting = True
@@ -860,88 +826,7 @@ def test_microphone(screen, ui_text):
         clock.tick(60)
     
     return True
-def get_voice_input_with_visual_feedback(screen, ui_text, current_language, colors):
-    """Get voice input with visual countdown and feedback"""
-    
-    # Initialize pygame if not already done
-    if not pygame.get_init():
-        pygame.init()
-    
-    clock = pygame.time.Clock()
-    
-    # Phase 1: Get ready (1 second)
-    screen.fill((255, 255, 255))
-    ready_text = pygame.font.Font(None, 48).render(ui_text['get_ready'], True, (255, 100, 0))
-    ready_rect = ready_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
-    screen.blit(ready_text, ready_rect)
-    pygame.display.flip()
-    
-    # Handle events during get ready
-    start_time = time.time()
-    while time.time() - start_time < 1.0:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return None, "quit"
-        time.sleep(0.1)
-    
-    # Phase 2: Recording with countdown
-    recording_start = time.time()
-    
-    # Start recording in background thread
-    result_queue = Queue()
-    
-    def recording_thread():
-        color_index, message = record_and_recognize_audio(current_language, colors)
-        result_queue.put((color_index, message))
-    
-    thread = threading.Thread(target=recording_thread)
-    thread.daemon = True
-    thread.start()
-    
-    # Visual countdown during recording
-    while time.time() - recording_start < audio_recorder.recording_duration:
-        screen.fill((255, 255, 255))
-        
-        # Show recording indicator
-        recording_text = pygame.font.Font(None, 48).render(ui_text['recording'], True, (255, 0, 0))
-        recording_rect = recording_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2 - 50))
-        screen.blit(recording_text, recording_rect)
-        
-        # Show countdown
-        remaining = audio_recorder.recording_duration - (time.time() - recording_start)
-        countdown_text = pygame.font.Font(None, 32).render(f"{remaining:.1f}s", True, (0, 0, 200))
-        countdown_rect = countdown_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2 + 50))
-        screen.blit(countdown_text, countdown_rect)
-        
-        pygame.display.flip()
-        
-        # Handle events
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return None, "quit"
-        
-        time.sleep(0.1)
-    
-    # Phase 3: Processing
-    screen.fill((255, 255, 255))
-    processing_text = pygame.font.Font(None, 32).render("Processing...", True, (0, 100, 200))
-    processing_rect = processing_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
-    screen.blit(processing_text, processing_rect)
-    pygame.display.flip()
-    
-    # Wait for result (with timeout)
-    wait_start = time.time()
-    while time.time() - wait_start < 5.0:  # 5 second timeout for processing
-        if not result_queue.empty():
-            return result_queue.get()
-        
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return None, "quit"
-        
-        time.sleep(0.1)
-    
-    return None, "Processing timeout"
+
 def get_available_methods():
     return audio_methods
 

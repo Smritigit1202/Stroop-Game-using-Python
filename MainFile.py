@@ -8,6 +8,25 @@ import io
 import os
 import pygame.freetype
 import math
+# Global color list: (Display Text, RGB)
+
+def get_localized_colors():
+    if current_language == 'hindi':
+        return [
+            ("लाल", (255, 0, 0)),
+            ("हरा", (0, 255, 0)),
+            ("नीला", (0, 0, 255)),
+            ("पीला", (255, 255, 0)),
+            ("गुलाबी", (255, 105, 180))
+        ]
+    else:
+        return [
+            ("Red", (255, 0, 0)),
+            ("Green", (0, 255, 0)),
+            ("Blue", (0, 0, 255)),
+            ("Yellow", (255, 255, 0)),
+            ("Pink", (255, 105, 180))
+        ]
 
 # Ensure UTF-8 encoding for output
 sys.stdout = io.TextIOWrapper(sys.stdout.detach(), encoding='utf-8')
@@ -242,8 +261,20 @@ game_stats = {
 
 # Enhanced Font management with better Hindi support
 def load_fonts():
-    fonts = {}
-    
+    fonts = {
+    "small": pygame.freetype.Font("fonts/OpenSans-Regular.ttf", 20),
+    "medium": pygame.freetype.Font("fonts/OpenSans-Regular.ttf", 28),
+    "large": pygame.freetype.Font("fonts/OpenSans-Regular.ttf", 36),
+    "title": pygame.freetype.Font("fonts/OpenSans-Regular.ttf", 48)
+ }
+
+    if current_language == 'hindi':
+     devanagari_font = "fonts/NotoSansDevanagari-Regular.ttf"
+     fonts["small"] = pygame.freetype.Font(devanagari_font, 20)
+     fonts["medium"] = pygame.freetype.Font(devanagari_font, 28)
+     fonts["large"] = pygame.freetype.Font(devanagari_font, 36)
+     fonts["title"] = pygame.freetype.Font(devanagari_font, 48)
+
     # Enhanced Hindi font paths - more comprehensive search
     hindi_font_paths = [
     "./fonts/NotoSansDevanagari-Regular.ttf",     # ✅ Highest priority
@@ -359,71 +390,100 @@ def draw_animated_background(surface, time_offset=0):
         color = (*UI_COLORS['primary'], alpha)
         pygame.draw.circle(surface, color[:3], (int(x), int(y)), int(size))
 
+import csv
+
 def show_efficiency_analysis():
-    """Enhanced efficiency analysis with better formatting"""
+    """Efficiency analysis UI with export notification on screen"""
     conn = sqlite3.connect('stroop_efficiency.db')
     c = conn.cursor()
     c.execute("SELECT * FROM efficiency ORDER BY method, language")
     data = c.fetchall()
     conn.close()
 
-    draw_animated_background(screen)
-    
-    # Title with modern styling
-    title_rect = pygame.Rect(0, 20, SCREEN_WIDTH, 80)
-    draw_gradient_rect(screen, UI_COLORS['primary'], UI_COLORS['secondary'], title_rect)
-    
-    title = render_text("Efficiency Analysis", 'title', UI_COLORS['white'])
-    title_rect_center = title.get_rect(center=(SCREEN_WIDTH//2, 60))
-    screen.blit(title, title_rect_center)
+    def draw_ui():
+        draw_animated_background(screen)
 
-    # Data table with modern styling
-    y = 140
-    header_rect = pygame.Rect(50, y, SCREEN_WIDTH - 100, 40)
-    pygame.draw.rect(screen, UI_COLORS['secondary'], header_rect, border_radius=5)
-    
-    header_text = render_text("Method | Language | Max Efficiency | Avg Efficiency | Games Played", 
-                             'medium', UI_COLORS['white'])
-    screen.blit(header_text, (70, y + 10))
-    
-    y += 60
-    
-    for i, row in enumerate(data):
-        method, lang, high, avg, played = row
+        # Title
+        title_rect = pygame.Rect(0, 20, SCREEN_WIDTH, 80)
+        draw_gradient_rect(screen, UI_COLORS['primary'], UI_COLORS['secondary'], title_rect)
+        title = render_text("Efficiency Analysis", 'title', UI_COLORS['white'])
+        screen.blit(title, title.get_rect(center=(SCREEN_WIDTH // 2, 60)))
+
+        # Table Header
+        y = 140
+        row_height = 42
+        col_x = [60, 220, 400, 600, 790]
+        col_titles = ["Method", "Language", "Max Efficiency", "Avg Efficiency", "Games Played"]
+
+        pygame.draw.rect(screen, UI_COLORS['secondary'], (50, y, SCREEN_WIDTH - 100, row_height), border_radius=6)
+        for i, title in enumerate(col_titles):
+            header = render_text(title, 'medium', UI_COLORS['white'])
+            screen.blit(header, (col_x[i], y + 10))
+        y += row_height + 10
+
+        for i, row in enumerate(data):
+            method, lang, high, avg, played = row
+            row_color = UI_COLORS['white'] if i % 2 == 0 else UI_COLORS['background']
+            pygame.draw.rect(screen, row_color, (50, y, SCREEN_WIDTH - 100, row_height), border_radius=4)
+
+            values = [
+                method.capitalize(),
+                "English" if lang == 'english' else "Hindi",
+                f"{high:.2f}",
+                f"{avg:.2f}",
+                str(played)
+            ]
+
+            for j, val in enumerate(values):
+                text = render_text(val, 'small', UI_COLORS['text'])
+                screen.blit(text, (col_x[j], y + 10))
+
+            y += row_height + 5
+
+        # Instructions
+        instruction_rect = pygame.Rect(0, SCREEN_HEIGHT - 80, SCREEN_WIDTH, 40)
+        pygame.draw.rect(screen, UI_COLORS['accent'], instruction_rect)
         
-        # Alternate row colors
-        row_color = UI_COLORS['white'] if i % 2 == 0 else UI_COLORS['background']
-        row_rect = pygame.Rect(50, y, SCREEN_WIDTH - 100, 35)
-        pygame.draw.rect(screen, row_color, row_rect, border_radius=3)
-        
-        # Method name with proper capitalization
-        method_display = method.capitalize()
-        lang_display = "English" if lang == 'english' else "Hindi"
-        
-        line = f"{method_display:<12} | {lang_display:<10} | {high:.2f}           | {avg:.2f}           | {played}"
-        text = render_text(line, 'small', UI_COLORS['text'])
-        screen.blit(text, (70, y + 8))
-        y += 40
-    
-    # Instructions
-    instruction_rect = pygame.Rect(0, SCREEN_HEIGHT - 80, SCREEN_WIDTH, 40)
-    pygame.draw.rect(screen, UI_COLORS['accent'], instruction_rect)
-    
-    note = render_text("Press any key to return to the main menu", 
-                      'medium', UI_COLORS['text'])
-    note_rect = note.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT - 60))
-    screen.blit(note, note_rect)
-    
+        note = render_text("Press E to export as CSV | Press any other key to return to menu", 
+                          'medium', UI_COLORS['text'])
+        screen.blit(note, note.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 60)))
+
+    draw_ui()
     pygame.display.flip()
 
     waiting = True
+    show_export_msg = False
+
     while waiting:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 waiting = False
             elif event.type == pygame.KEYDOWN:
-                waiting = False
+                if event.key == pygame.K_e:
+                    export_efficiency_to_csv(data)
+                    show_export_msg = True
 
+                    # Redraw UI + show export confirmation
+                    draw_ui()
+                    export_note = render_text("CSV Exported Successfully!", 'medium', UI_COLORS['success'])
+                    screen.blit(export_note, export_note.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 110)))
+                    pygame.display.flip()
+                    pygame.time.wait(2000)  # Show for 2 seconds
+
+                else:
+                    waiting = False
+
+
+def export_efficiency_to_csv(data):
+    """Exports efficiency data to CSV"""
+    filename = "efficiency_export.csv"
+    with open(filename, mode='w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        writer.writerow(["Method", "Language", "Max Efficiency", "Avg Efficiency", "Games Played"])
+        for row in data:
+            method, lang, high, avg, played = row
+            writer.writerow([method.capitalize(), lang.capitalize(), f"{high:.2f}", f"{avg:.2f}", played])
+    print(f"Efficiency data exported to {filename}")
 
 
 def render_text(text, size, color):
@@ -643,8 +703,9 @@ def test_input_method():
         pygame.display.flip()
         clock.tick(60)
     
-    # Choose test word and color
+    colors = get_localized_colors()
     test_word = random.choice(colors)
+
     test_color = random.choice(colors)
     
     # Main test interface

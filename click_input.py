@@ -1,6 +1,13 @@
 import pygame
 import time
+from MainFile import current_language  # Or wherever current_language is defined
 
+
+def _get_font(self, size_key):
+    """Get the appropriate font based on language"""
+    lang_prefix = 'hindi' if current_language == 'hindi' else 'english'
+    font = self.fonts.get(f'{lang_prefix}_{size_key}', pygame.font.Font(None, 24))
+    return font
 class ClickInput:
     """Handle mouse click input for the Stroop Effect game"""
     
@@ -122,7 +129,8 @@ class ClickInput:
         
         # Title
         try:
-            title_font = self.fonts['english_medium']
+            title_font = self._get_font('medium')
+
         except:
             title_font = pygame.font.Font(None, 32)
         
@@ -142,17 +150,24 @@ class ClickInput:
                 
                 # Button text
                 try:
-                    button_font = self.fonts['english_small']
+                    button_font = self._get_font('small')
                 except:
                     button_font = pygame.font.Font(None, 24)
                 
-                button_text = button_font.render(color_name, True, color_rgb)
-                text_rect = button_text.get_rect(center=button_rect.center)
-                self.screen.blit(button_text, text_rect)
+                if isinstance(button_font, pygame.freetype.Font):
+                     button_text_surf, _ = button_font.render(color_name, fgcolor=color_rgb)
+                else:
+                      button_text_surf = button_font.render(color_name, True, color_rgb)
+
+                text_rect = button_text_surf.get_rect(center=button_rect.center)
+                self.screen.blit(button_text_surf, text_rect)
+
         
         # Show ESC instruction
         try:
-            esc_font = self.fonts['english_small']
+            esc_font = self._get_font('small')
+
+
         except:
             esc_font = pygame.font.Font(None, 20)
         
@@ -175,30 +190,33 @@ class ClickInput:
         return None
     
     def _highlight_hovered_button(self, mouse_pos):
-        """Highlight button when mouse hovers over it"""
-        for i, button_rect in enumerate(self.button_rects):
-            if i < len(self.colors):
-                color_name, color_rgb = self.colors[i]
-                
-                if button_rect.collidepoint(mouse_pos):
-                    # Highlight hovered button
-                    pygame.draw.rect(self.screen, (220, 220, 220), button_rect)
-                    pygame.draw.rect(self.screen, color_rgb, button_rect, 3)
-                else:
-                    # Normal button appearance
-                    pygame.draw.rect(self.screen, (255, 255, 255), button_rect)
-                    pygame.draw.rect(self.screen, (0, 0, 0), button_rect, 2)
-                
-                # Redraw button text
-                try:
-                    button_font = self.fonts['english_small']
-                except:
-                    button_font = pygame.font.Font(None, 24)
-                
-                button_text = button_font.render(color_name, True, color_rgb)
-                text_rect = button_text.get_rect(center=button_rect.center)
-                self.screen.blit(button_text, text_rect)
-    
+     """Highlight button when mouse hovers over it"""
+     for i, button_rect in enumerate(self.button_rects):
+        if i < len(self.colors):
+            color_name, color_rgb = self.colors[i]
+
+            # Highlight or normal appearance
+            if button_rect.collidepoint(mouse_pos):
+                pygame.draw.rect(self.screen, (220, 220, 220), button_rect)
+                pygame.draw.rect(self.screen, color_rgb, button_rect, 3)
+            else:
+                pygame.draw.rect(self.screen, (255, 255, 255), button_rect)
+                pygame.draw.rect(self.screen, (0, 0, 0), button_rect, 2)
+
+            # Draw button text using correct font type
+            try:
+                button_font = self._get_font('small')
+            except:
+                button_font = pygame.font.Font(None, 24)
+
+            if isinstance(button_font, pygame.freetype.Font):
+                button_text_surf, _ = button_font.render(color_name, fgcolor=color_rgb)
+            else:
+                button_text_surf = button_font.render(color_name, True, color_rgb)
+
+            text_rect = button_text_surf.get_rect(center=button_rect.center)
+            self.screen.blit(button_text_surf, text_rect)
+
     def _show_timeout_warning(self, remaining_time):
         """Show timeout warning"""
         # Clear center area for timeout warning
@@ -209,7 +227,7 @@ class ClickInput:
         
         timeout_text = f"Time: {remaining_time:.1f}s"
         try:
-            timeout_font = self.fonts['english_medium']
+            timeout_font = self._get_font('medium')
         except:
             timeout_font = pygame.font.Font(None, 32)
         

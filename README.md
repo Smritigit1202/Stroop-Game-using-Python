@@ -30,6 +30,11 @@ This repository presents a suite of **six cognitive diagnostic games** based on 
 
 ---
 
+
+![image](https://github.com/user-attachments/assets/50174382-03d2-4da4-8d1d-d76e31c05df6)
+
+
+
 ## 🔍 Purpose
 
 These games are built to:

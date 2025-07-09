@@ -579,7 +579,7 @@ def select_input_method():
         
         # Current language display
         lang_display = "English" if current_language == 'english' else "हिंदी"
-        lang_text = render_text(f"भाषा: {lang_display}", 'medium', UI_COLORS['text'])
+        lang_text = render_text(f"Language/'भाषा: {lang_display}", 'medium', UI_COLORS['text'])
         lang_rect = lang_text.get_rect(center=(SCREEN_WIDTH//2, 160))
         screen.blit(lang_text, lang_rect)
         

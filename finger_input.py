@@ -518,57 +518,77 @@ class GestureInput:
             'color_index': None,
             'message': 'Timeout - no gesture detected'
         }
-    
+
     def _show_gesture_instructions(self, screen, ui_text, fonts, colors):
         """Show gesture input instructions"""
         # Clear the screen area for instructions
         instruction_area = pygame.Rect(50, 150, screen.get_width() - 100, 400)
         pygame.draw.rect(screen, (240, 240, 240), instruction_area)
         pygame.draw.rect(screen, (0, 0, 0), instruction_area, 2)
-        
-        # Title
+
         try:
-            if 'english_medium' in fonts:
-                title_font = fonts['english_medium']
-            else:
-                title_font = pygame.font.Font(None, 36)
-            
-            title_text = title_font.render("Gesture Input", True, (0, 0, 200))
-            screen.blit(title_text, (instruction_area.x + 10, instruction_area.y + 10))
-            
-            # Instructions
-            instructions = [
-                "Show fingers to select colors:",
-                "",
-            ]
-            
-            # Add color mappings
-            for i, (color_name, _) in enumerate(colors):
-                instructions.append(f"{i+1} finger{'s' if i > 0 else ''} = {color_name}")
-            
-            instructions.extend([
-                "",
-                f"Hold gesture for {self.gesture_hold_time} seconds to confirm",
-                "Camera window shows live feed",
-                "Press ESC to quit"
-            ])
-            
-            small_font = fonts.get('english_small', pygame.font.Font(None, 24))
-            
-            y_offset = 60
-            for instruction in instructions:
-                if instruction:  # Skip empty lines
-                    text_surface = small_font.render(instruction, True, (0, 0, 0))
+        # Title
+         title_font = fonts.get('english_medium', pygame.font.Font(None, 36))
+         title_text = title_font.render("Gesture Input", True, (0, 0, 200))
+         screen.blit(title_text, (instruction_area.x + 10, instruction_area.y + 10))
+
+        # Instructions list
+         instructions = [
+            "Show fingers to select colors:",
+            "",
+        ]
+
+        # Add color mappings
+         for i, (color_name, _) in enumerate(colors):
+            instructions.append(f"{i+1} finger{'s' if i > 0 else ''} = {color_name}")
+
+         instructions.extend([
+            "",
+            f"Hold gesture for {self.gesture_hold_time} seconds to confirm",
+            "Camera window shows live feed",
+            "Press ESC to quit"
+        ])
+
+         y_offset = 60
+         for instruction in instructions:
+            if instruction:
+                if '=' in instruction:
+                    # Mixed language line: split into English and Hindi parts
+                    left, right = instruction.split('=', 1)
+                    left = left.strip()
+                    right = right.strip()
+
+                    # Render left (English)
+                    eng_font = fonts.get('english_small', pygame.font.Font(None, 24))
+                    eng_text = eng_font.render(left + " = ", True, (0, 0, 0))
+                    screen.blit(eng_text, (instruction_area.x + 20, instruction_area.y + y_offset))
+
+                    # Render right (Hindi)
+                    # Use Hindi font only if right-side text is Hindi
+                    if ord(right[0]) >= 0x0900 and ord(right[0]) <= 0x097F:
+                       right_font = fonts.get('hindi_small', pygame.font.Font(None, 24))
+                    else:
+                       right_font = fonts.get('english_small', pygame.font.Font(None, 24))
+
+                    right_text = right_font.render(right, True, (0, 0, 0))
+                    screen.blit(right_text, (instruction_area.x + 20 + eng_text.get_width(), instruction_area.y + y_offset))
+
+                else:
+                    # Pure English line
+                    eng_font = fonts.get('english_small', pygame.font.Font(None, 24))
+                    text_surface = eng_font.render(instruction, True, (0, 0, 0))
                     screen.blit(text_surface, (instruction_area.x + 20, instruction_area.y + y_offset))
-                y_offset += 30
-                
+                    
+
+            y_offset += 30
+
         except Exception as e:
-            print(f"Error showing instructions: {e}")
-            # Fallback text
-            fallback_font = pygame.font.Font(None, 24)
-            fallback_text = fallback_font.render("Show 1-5 fingers to select color", True, (0, 0, 0))
-            screen.blit(fallback_text, (instruction_area.x + 20, instruction_area.y + 20))
-    
+         print(f"Error showing instructions: {e}")
+        # Fallback text
+         fallback_font = pygame.font.Font(None, 24)
+         fallback_text = fallback_font.render("Show 1-5 fingers to select color", True, (0, 0, 0))
+         screen.blit(fallback_text, (instruction_area.x + 20, instruction_area.y + 20))
+
     def _show_gesture_progress(self, screen, gesture_index, progress, colors, fonts):
         """Show gesture confirmation progress"""
         # Progress bar area

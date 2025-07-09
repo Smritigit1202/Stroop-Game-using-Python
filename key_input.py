@@ -100,56 +100,65 @@ class KeyInput:
             pygame.time.Clock().tick(60)
     
     def _show_keyboard_help(self, colors, screen, ui_text, fonts):
-        """Show keyboard mapping help"""
-        # Clear lower part of screen for help
-        help_area = pygame.Rect(0, screen.get_height() - 200, screen.get_width(), 200)
-        pygame.draw.rect(screen, (240, 240, 240), help_area)
-        
-        # Title
+     """Show keyboard mapping help"""
+    # Clear lower part of screen for help
+     help_area = pygame.Rect(0, screen.get_height() - 200, screen.get_width(), 200)
+     pygame.draw.rect(screen, (240, 240, 240), help_area)
+
+    # Title
+     try:
+        help_title = fonts['english_small'].render("Keyboard Controls:", True, (0, 0, 0))
+        screen.blit(help_title, (50, screen.get_height() - 190))
+     except:
+        help_title = pygame.font.Font(None, 24).render("Keyboard Controls:", True, (0, 0, 0))
+        screen.blit(help_title, (50, screen.get_height() - 190))
+
+    # Show color mappings
+     y_offset = screen.get_height() - 160
+     col_width = screen.get_width() // 4
+
+     for i, (color_name, color_rgb) in enumerate(colors):
+        if i >= 7:
+            break
+
+        x_pos = 50 + (i % 4) * col_width
+        if i >= 4:
+            y_pos = y_offset + 30
+        else:
+            y_pos = y_offset
+
+        key_letter = self._get_key_letter(i)
+        key_number = str(i + 1)
+
+        # Split rendering (mixed fonts for Hindi/English)
         try:
-            help_title = fonts['english_small'].render("Keyboard Controls:", True, (0, 0, 0))
-            screen.blit(help_title, (50, screen.get_height() - 190))
-        except:
-            # Fallback font
-            help_title = pygame.font.Font(None, 24).render("Keyboard Controls:", True, (0, 0, 0))
-            screen.blit(help_title, (50, screen.get_height() - 190))
-        
-        # Show color mappings
-        y_offset = screen.get_height() - 160
-        col_width = screen.get_width() // 4
-        
-        for i, (color_name, color_rgb) in enumerate(colors):
-            if i >= 7:  # Limit to 7 colors to fit on screen
-                break
-            
-            x_pos = 50 + (i % 4) * col_width
-            if i >= 4:
-                y_pos = y_offset + 30
+            # Render "R/1 = "
+            eng_font = fonts.get('english_small', pygame.font.Font(None, 24))
+            left_text = eng_font.render(f"{key_letter}/{key_number} = ", True, (0, 0, 0))
+            screen.blit(left_text, (x_pos, y_pos))
+
+            # Render color name (Hindi or English)
+            if all('\u0900' <= c <= '\u097F' for c in color_name):  # Hindi detection
+                color_font = fonts.get('hindi_small', pygame.font.Font(None, 24))
             else:
-                y_pos = y_offset
-            
-            # Get the corresponding key
-            key_letter = self._get_key_letter(i)
-            key_number = str(i + 1)
-            
-            # Create help text
-            help_text = f"{key_letter}/{key_number}: {color_name}"
-            
-            try:
-                text_surface = fonts['english_small'].render(help_text, True, color_rgb)
-            except:
-                text_surface = pygame.font.Font(None, 20).render(help_text, True, color_rgb)
-            
-            screen.blit(text_surface, (x_pos, y_pos))
-        
-        # Show additional controls
-        try:
-            esc_text = fonts['english_small'].render("ESC: Quit", True, (100, 100, 100))
-            screen.blit(esc_text, (50, screen.get_height() - 40))
-        except:
-            esc_text = pygame.font.Font(None, 20).render("ESC: Quit", True, (100, 100, 100))
-            screen.blit(esc_text, (50, screen.get_height() - 40))
-    
+                color_font = eng_font
+
+            color_text = color_font.render(color_name, True, color_rgb)
+            screen.blit(color_text, (x_pos + left_text.get_width(), y_pos))
+
+        except Exception as e:
+            print(f"Error rendering mapping: {e}")
+            fallback = pygame.font.Font(None, 20).render(f"{key_letter}/{key_number}: {color_name}", True, color_rgb)
+            screen.blit(fallback, (x_pos, y_pos))
+
+    # ESC mapping
+     try:
+        esc_text = fonts['english_small'].render("ESC: Quit", True, (100, 100, 100))
+        screen.blit(esc_text, (50, screen.get_height() - 40))
+     except:
+        esc_text = pygame.font.Font(None, 20).render("ESC: Quit", True, (100, 100, 100))
+        screen.blit(esc_text, (50, screen.get_height() - 40))
+
     def _get_key_letter(self, index):
         """Get the letter key for a given color index"""
         key_letters = ['R', 'G', 'B', 'Y', 'P', 'O', 'U']

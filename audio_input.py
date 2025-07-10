@@ -89,7 +89,7 @@ def load_fonts():
    
     try:
         # Try to load Hindi font
-        hindi_font_large = pygame.font.Font("NotoSansDevanagari-Regular.ttf", 48)
+        hindi_font_large = pygame.font.Font("NotoSansDevanagari-Regular.ttf", 45)
         hindi_font_medium = pygame.font.Font("NotoSansDevanagari-Regular.ttf", 36)
         hindi_font_small = pygame.font.Font("NotoSansDevanagari-Regular.ttf", 24)
     except:

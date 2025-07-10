@@ -65,8 +65,9 @@ class ClickInput:
         self.button_rects = []
         screen_width = self.screen.get_width()
         screen_height = self.screen.get_height()
+        button_height = 40  # Height of each button
         button_width = 160
-        button_height = 50
+        
         button_spacing = 20
         total_width = min(3, len(self.colors)) * (button_width + button_spacing) - button_spacing
         start_x = (screen_width - total_width) // 2

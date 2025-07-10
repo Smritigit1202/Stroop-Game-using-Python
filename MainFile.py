@@ -76,13 +76,13 @@ except ImportError:
 
 # Initialize pygame
 pygame.init()
-screen = pygame.display.set_mode((1200, 800))
+screen = pygame.display.set_mode((1000, 600))
 pygame.display.set_caption("Stroop Effect Game - Multi-Input Methods")
 clock = pygame.time.Clock()
 
 # Game constants
-SCREEN_WIDTH = 1200
-SCREEN_HEIGHT = 800
+SCREEN_WIDTH = 1000
+SCREEN_HEIGHT = 600
 COLORS = {
     'red': (255, 0, 0),
     'green': (0, 255, 0),
@@ -262,18 +262,18 @@ game_stats = {
 # Enhanced Font management with better Hindi support
 def load_fonts():
     fonts = {
-    "small": pygame.freetype.Font("fonts/OpenSans-Regular.ttf", 20),
-    "medium": pygame.freetype.Font("fonts/OpenSans-Regular.ttf", 28),
-    "large": pygame.freetype.Font("fonts/OpenSans-Regular.ttf", 36),
-    "title": pygame.freetype.Font("fonts/OpenSans-Regular.ttf", 48)
+    "small": pygame.freetype.Font("fonts/OpenSans-Regular.ttf", 12),
+    "medium": pygame.freetype.Font("fonts/OpenSans-Regular.ttf", 23),
+    "large": pygame.freetype.Font("fonts/OpenSans-Regular.ttf", 25),
+    "title": pygame.freetype.Font("fonts/OpenSans-Regular.ttf", 35)
  }
 
     if current_language == 'hindi':
      devanagari_font = "fonts/NotoSansDevanagari-Regular.ttf"
-     fonts["small"] = pygame.freetype.Font(devanagari_font, 20)
-     fonts["medium"] = pygame.freetype.Font(devanagari_font, 28)
-     fonts["large"] = pygame.freetype.Font(devanagari_font, 36)
-     fonts["title"] = pygame.freetype.Font(devanagari_font, 48)
+     fonts["small"] = pygame.freetype.Font(devanagari_font, 12)
+     fonts["medium"] = pygame.freetype.Font(devanagari_font, 23)
+     fonts["large"] = pygame.freetype.Font(devanagari_font, 25)
+     fonts["title"] = pygame.freetype.Font(devanagari_font, 35)
 
     # Enhanced Hindi font paths - more comprehensive search
     hindi_font_paths = [
@@ -306,13 +306,13 @@ def load_fonts():
         print("[FONT] Hindi text may not display correctly")
         print("[FONT] Please install Mangal or Noto Sans Devanagari font")
     
-    # Load fonts with different sizes
+    # fonts updates 
     font_sizes = {
-        'large': 56,
-        'medium': 36,
-        'small': 24,
-        'title': 72,
-        'subtitle': 28
+        'large': 30,
+        'medium': 25,
+        'small': 15,
+        'title': 60,
+        'subtitle': 21
     }
     
     for size_name, size in font_sizes.items():
@@ -360,7 +360,7 @@ def draw_button(surface, text, rect, color, text_color, font_size='medium', hove
     """Draw a modern button with gradient and shadow"""
     # Shadow
     shadow_rect = pygame.Rect(rect.x + 3, rect.y + 3, rect.width, rect.height)
-    pygame.draw.rect(surface, (0, 0, 0, 50), shadow_rect, border_radius=10)
+    pygame.draw.rect(surface, (0, 0, 0, 30), shadow_rect, border_radius=10)
     
     # Button background
     if hover:
@@ -382,10 +382,10 @@ def draw_animated_background(surface, time_offset=0):
     
     # Draw floating particles
     for i in range(20):
-        x = (200 + i * 60 + math.sin(time_offset + i) * 30) % SCREEN_WIDTH
-        y = (100 + i * 40 + math.cos(time_offset + i * 0.5) * 20) % SCREEN_HEIGHT
+        x = (160 + i * 48 + math.sin(time_offset + i) * 24) % SCREEN_WIDTH
+        y = (160 + i * 48 + math.cos(time_offset + i ) * 24) % SCREEN_HEIGHT
         size = 3 + math.sin(time_offset + i * 0.3) * 2
-        alpha = int(50 + math.sin(time_offset + i * 0.7) * 30)
+        alpha = int(30 + math.sin(time_offset + i * 0.7) * 24)
         
         color = (*UI_COLORS['primary'], alpha)
         pygame.draw.circle(surface, color[:3], (int(x), int(y)), int(size))
@@ -404,18 +404,18 @@ def show_efficiency_analysis():
         draw_animated_background(screen)
 
         # Title
-        title_rect = pygame.Rect(0, 20, SCREEN_WIDTH, 80)
+        title_rect = pygame.Rect(0, 20, SCREEN_WIDTH, 50)
         draw_gradient_rect(screen, UI_COLORS['primary'], UI_COLORS['secondary'], title_rect)
         title = render_text("Efficiency Analysis", 'title', UI_COLORS['white'])
-        screen.blit(title, title.get_rect(center=(SCREEN_WIDTH // 2, 60)))
+        screen.blit(title, title.get_rect(center=(SCREEN_WIDTH // 2, 45)))
 
         # Table Header
         y = 140
         row_height = 42
-        col_x = [60, 220, 400, 600, 790]
+        col_x = [60, 200, 400, 600, 800]
         col_titles = ["Method", "Language", "Max Efficiency", "Avg Efficiency", "Games Played"]
-
-        pygame.draw.rect(screen, UI_COLORS['secondary'], (50, y, SCREEN_WIDTH - 100, row_height), border_radius=6)
+        
+        pygame.draw.rect(screen, UI_COLORS['secondary'], (30, y, SCREEN_WIDTH - 100, row_height), border_radius=6)
         for i, title in enumerate(col_titles):
             header = render_text(title, 'medium', UI_COLORS['white'])
             screen.blit(header, (col_x[i], y + 10))
@@ -424,7 +424,7 @@ def show_efficiency_analysis():
         for i, row in enumerate(data):
             method, lang, high, avg, played = row
             row_color = UI_COLORS['white'] if i % 2 == 0 else UI_COLORS['background']
-            pygame.draw.rect(screen, row_color, (50, y, SCREEN_WIDTH - 100, row_height), border_radius=4)
+            pygame.draw.rect(screen, row_color, (30, y, SCREEN_WIDTH - 100, row_height), border_radius=4)
 
             values = [
                 method.capitalize(),
@@ -550,8 +550,8 @@ def select_input_method():
     if not available_methods:
         # Enhanced error display
         draw_animated_background(screen)
-        
-        error_rect = pygame.Rect(SCREEN_WIDTH//2 - 300, SCREEN_HEIGHT//2 - 50, 600, 100)
+
+        error_rect = pygame.Rect(SCREEN_WIDTH//2 - 150, SCREEN_HEIGHT//2 - 25, 300, 50)
         pygame.draw.rect(screen, UI_COLORS['error'], error_rect, border_radius=15)
         
         error_text = render_text("No input methods available!", 'large', UI_COLORS['white'])
@@ -570,23 +570,23 @@ def select_input_method():
         draw_animated_background(screen, animation_time)
         
         # Title with gradient background
-        title_rect = pygame.Rect(0, 30, SCREEN_WIDTH, 100)
+        title_rect = pygame.Rect(0, 15, SCREEN_WIDTH, 100)
         draw_gradient_rect(screen, UI_COLORS['primary'], UI_COLORS['secondary'], title_rect)
         
         title_text = render_text(ui_text['select_method'], 'title', UI_COLORS['white'])
-        title_text_rect = title_text.get_rect(center=(SCREEN_WIDTH//2, 80))
+        title_text_rect = title_text.get_rect(center=(SCREEN_WIDTH//2, 65))
         screen.blit(title_text, title_text_rect)
         
         # Current language display
         lang_display = "English" if current_language == 'english' else "हिंदी"
         lang_text = render_text(f"Language/'भाषा: {lang_display}", 'medium', UI_COLORS['text'])
-        lang_rect = lang_text.get_rect(center=(SCREEN_WIDTH//2, 160))
+        lang_rect = lang_text.get_rect(center=(SCREEN_WIDTH//2, 100))
         screen.blit(lang_text, lang_rect)
         
         # Method selection with modern buttons
-        start_y = 220
-        button_height = 50
-        button_width = 500
+        start_y = 150
+        button_height = 30
+        button_width = 350
         
         for i, (method, name) in enumerate(available_methods):
             button_rect = pygame.Rect(SCREEN_WIDTH//2 - button_width//2, 
@@ -600,10 +600,10 @@ def select_input_method():
             draw_button(screen, name, button_rect, button_color, text_color, 'medium', is_selected)
         
         # Instructions panel
-        instruction_y = start_y + len(available_methods) * (button_height + 10) + 30
-        instruction_rect = pygame.Rect(50, instruction_y, SCREEN_WIDTH - 100, 180)
-        pygame.draw.rect(screen, UI_COLORS['white'], instruction_rect, border_radius=10)
-        pygame.draw.rect(screen, UI_COLORS['primary'], instruction_rect, 2, border_radius=10)
+        instruction_y = start_y + len(available_methods) * (button_height + 10) + 15
+        instruction_rect = pygame.Rect(50, instruction_y, SCREEN_WIDTH - 150, 150)
+        pygame.draw.rect(screen, UI_COLORS['white'], instruction_rect, border_radius=3)
+        pygame.draw.rect(screen, UI_COLORS['primary'], instruction_rect, 2, border_radius=3)
         
         if current_language == 'hindi':
             instructions = [
@@ -626,7 +626,7 @@ def select_input_method():
             screen.blit(inst_text, (70, instruction_y + 20 + i * 30))
         
         # Test option
-        test_rect = pygame.Rect(SCREEN_WIDTH//2 - 200, SCREEN_HEIGHT - 120, 400, 40)
+        test_rect = pygame.Rect(SCREEN_WIDTH//2 - 150, SCREEN_HEIGHT - 120, 300, 50)
         draw_button(screen, ui_text['method_test'], test_rect, UI_COLORS['success'], UI_COLORS['white'], 'small')
         
         pygame.display.flip()

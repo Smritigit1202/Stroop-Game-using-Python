@@ -86,21 +86,34 @@ recognizer.dynamic_energy_threshold = True
 recognizer.dynamic_energy_adjustment_damping = 0.15
 recognizer.dynamic_energy_ratio = 1.5
 def load_fonts():
+   
+    try:
+        # Try to load Hindi font
+        hindi_font_large = pygame.font.Font("NotoSansDevanagari-Regular.ttf", 48)
+        hindi_font_medium = pygame.font.Font("NotoSansDevanagari-Regular.ttf", 36)
+        hindi_font_small = pygame.font.Font("NotoSansDevanagari-Regular.ttf", 24)
+    except:
+        # Fallback to default fonts if Hindi font not found
+        print("Hindi font not found, using default fonts")
+        hindi_font_large = pygame.font.Font(None, 48)
+        hindi_font_medium = pygame.font.Font(None, 36)
+        hindi_font_small = pygame.font.Font(None, 24)
+    
     return {
-        'large': pygame.font.Font(None, 48),
-        'medium': pygame.font.Font(None, 36),
-        'small': pygame.font.Font(None, 24)
+        'large': hindi_font_large,
+        'medium': hindi_font_medium,
+        'small': hindi_font_small
     }
 
 class AudioRecoVorder:
     """Audio recording class with multiple fallback methods"""
     def __init__(self):
-        self.temp_dir = tempfile.mkdtemp()
-        self.sample_rate = 16000
-        self.recording_duration = 15
-        self.microphone = None
-        self.recognizer = recognizer
-        self.init_microphone()
+     self.temp_dir = tempfile.mkdtemp()
+     self.sample_rate = 16000
+     self.recording_duration = 8  # Reduced from 15 to 8 seconds
+     self.microphone = None
+     self.recognizer = recognizer
+     self.init_microphone()
 
     def __del__(self):
         try:
@@ -126,21 +139,21 @@ class AudioRecoVorder:
 
     def show_listening_screen(self, screen, ui_text, fonts):
         screen.fill((255, 255, 255))
-        text = fonts['large'].render(ui_text.get('listening', 'Listening...'), True, (0, 100, 200))
+        text = fonts['large'].render("Listening...", True, (0, 100, 200))
         text_rect = text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
         screen.blit(text, text_rect)
         pygame.display.flip()
 
     def show_recording_screen(self, screen, ui_text, fonts):
-        screen.fill((255, 100, 100))
-        text = fonts['large'].render(ui_text.get('recording', 'Recording...'), True, (255, 255, 255))
-        text_rect = text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
-        screen.blit(text, text_rect)
-        pygame.display.flip()
+      screen.fill((255, 100, 100))
+      text = fonts['large'].render("Recording...", True, (255, 255, 255))
+      text_rect = text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
+      screen.blit(text, text_rect)
+      pygame.display.flip()
 
     def show_processing_screen(self, screen, ui_text, fonts):
         screen.fill((100, 100, 255))
-        text = fonts['large'].render(ui_text.get('processing', 'Processing...'), True, (255, 255, 255))
+        text = fonts['large'].render("Processing...", True, (255, 255, 255))
         text_rect = text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
         screen.blit(text, text_rect)
         pygame.display.flip()
@@ -162,6 +175,7 @@ class AudioRecoVorder:
         return None
 
     def get_input(self, colors, screen, ui_text, fonts):
+     fonts = load_fonts()  # Add this line
      try:
         # Fix fonts parameter - ensure it's a dictionary
         if not isinstance(fonts, dict):
@@ -174,28 +188,28 @@ class AudioRecoVorder:
             }
         
         # Ensure required font keys exist
+        # Ensure required font keys exist
         if 'large' not in fonts:
-            fonts['large'] = pygame.font.Font(None, 48)
+           fonts['large'] = pygame.font.Font(None, 48)
         if 'medium' not in fonts:
-            fonts['medium'] = pygame.font.Font(None, 36)
+         fonts['medium'] = pygame.font.Font(None, 36)
         if 'small' not in fonts:
-            fonts['small'] = pygame.font.Font(None, 24)
-        
+         fonts['small'] = pygame.font.Font(None, 24)
         if not self.microphone:
             self.init_microphone()
             if not self.microphone:
                 return {'success': False, 'color_index': None, 'message': 'microphone_init_failed'}
         
         # Phase 1: Show "Get Ready" message
-        screen.fill((255, 255, 255))
-        ready_text = fonts['large'].render(ui_text.get('get_ready', 'Get Ready!'), True, (255, 100, 0))
+        # Phase 1: Show "Get Ready" message
+        screen.fill((255, 255, 255)) 
+        ready_text = fonts['large'].render("Get Ready!", True, (255, 100, 0))
         ready_rect = ready_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2))
         screen.blit(ready_text, ready_rect)
-        
+
         instruction_text = fonts['medium'].render("Say the COLOR NAME when recording starts", True, (0, 0, 0))
         instruction_rect = instruction_text.get_rect(center=(screen.get_width()//2, screen.get_height()//2 + 60))
         screen.blit(instruction_text, instruction_rect)
-        
         pygame.display.flip()
         time.sleep(2)  # Give user time to prepare
         
@@ -598,15 +612,30 @@ class AudioRecoVorder:
 audio_recorder = AudioRecoVorder()
 
 def match_color_hindi(spoken_text, colors):
+    """Enhanced Hindi color matching with better alternatives"""
     spoken_lower = spoken_text.lower().strip()
+    print(f"Trying to match Hindi text: '{spoken_text}'")
+    
     for i, color_data in enumerate(colors):
         if len(color_data) >= 3:
             color_name = color_data[0]
             alternatives = color_data[2]
+            
+            # Check each alternative
             for alt in alternatives:
-                if alt.lower() in spoken_lower or spoken_lower in alt.lower():
+                alt_lower = alt.lower()
+                # Check if alternative is in spoken text or vice versa
+                if alt_lower in spoken_lower or spoken_lower in alt_lower:
                     print(f"Matched '{spoken_text}' with '{color_name}' using alternative '{alt}'")
                     return i
+                
+                # Also check for partial matches for Hindi
+                if len(alt_lower) >= 3 and len(spoken_lower) >= 3:
+                    if alt_lower[:3] in spoken_lower or spoken_lower[:3] in alt_lower:
+                        print(f"Partial match: '{spoken_text}' with '{color_name}' using alternative '{alt}'")
+                        return i
+    
+    print(f"No Hindi match found for: '{spoken_text}'")
     return None
 
 def match_color_english(spoken_text, colors):
@@ -628,14 +657,17 @@ def record_and_recognize_audio(current_language, colors):
         if not audio:
             print("Recording failed - no audio data")
             return None, "Recording failed - no audio captured"
+        
         print("Audio recorded successfully, starting recognition...")
         recognized_text = None
         recognition_error = None
+        
         if current_language == 'hindi':
             recognition_configs = [
                 ('hi-IN', 'Google Hindi'),
-                ('en-IN', 'Google English-India'),
-                ('en-US', 'Google US English'),
+        ('en-IN', 'Google English-India'),  # Try English-India first for mixed words
+        ('hi', 'Google Hindi Short'),
+        ('en-US', 'Google US English'),
             ]
         else:
             recognition_configs = [
@@ -643,6 +675,8 @@ def record_and_recognize_audio(current_language, colors):
                 ('en-IN', 'Google English-India'),
                 ('en-GB', 'Google UK English'),
             ]
+        
+        # Rest of the function remains the same...
         for lang_code, desc in recognition_configs:
             try:
                 print(f"Trying {desc} recognition...")

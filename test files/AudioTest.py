@@ -166,6 +166,8 @@ def load_fonts():
     
     # Hindi fonts
     mangal_paths = [
+        "./fonts/NotoSansDevanagari-Regular.ttf"
+,
         "Mangal.ttf", "./Mangal.ttf", "fonts/Mangal.ttf",
         "C:/Windows/Fonts/mangal.ttf", "/System/Library/Fonts/Mangal.ttf",
         "/usr/share/fonts/truetype/mangal/Mangal.ttf"

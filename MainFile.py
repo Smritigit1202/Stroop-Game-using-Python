@@ -411,14 +411,14 @@ def show_efficiency_analysis():
 
         # Table Header
         y = 140
-        row_height = 42
+        row_height = 25
         col_x = [60, 200, 400, 600, 800]
         col_titles = ["Method", "Language", "Max Efficiency", "Avg Efficiency", "Games Played"]
         
         pygame.draw.rect(screen, UI_COLORS['secondary'], (30, y, SCREEN_WIDTH - 100, row_height), border_radius=6)
         for i, title in enumerate(col_titles):
-            header = render_text(title, 'medium', UI_COLORS['white'])
-            screen.blit(header, (col_x[i], y + 10))
+            header = render_text(title, 'small', UI_COLORS['white'])
+            screen.blit(header, (col_x[i], y + 8))
         y += row_height + 10
 
         for i, row in enumerate(data):
@@ -436,9 +436,9 @@ def show_efficiency_analysis():
 
             for j, val in enumerate(values):
                 text = render_text(val, 'small', UI_COLORS['text'])
-                screen.blit(text, (col_x[j], y + 10))
+                screen.blit(text, (col_x[j], y + 8))
 
-            y += row_height + 5
+            y += row_height + 3
 
         # Instructions
         instruction_rect = pygame.Rect(0, SCREEN_HEIGHT - 80, SCREEN_WIDTH, 40)

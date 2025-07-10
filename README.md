@@ -1,72 +1,85 @@
-# 🧠 Multi-Modal Stroop Effect Games (Hindi & English)
 
-This repository presents a suite of **six cognitive diagnostic games** based on the Stroop Effect, designed to identify and support neurodevelopmental conditions such as **ADHD**, **executive dysfunction**, and other cognitive control disorders. Each game functions in **both Hindi and English**, allowing for accessible bilingual testing across diverse Indian populations.
+# Multimodal Stroop Effect Cognitive Game
 
----
-
-## 📊 Comparison Table
-
-| Category                       | Click-Based                  | Finger Gesture                | Audio Input                | QR Code (3 Colors)       | Flashcard (3 Colors)        | Keyboard-Based        |
-| ------------------------------ | ---------------------------- | ----------------------------- | -------------------------- | ------------------------ | --------------------------- | --------------------- |
-| **Where It Can Be Used**       | Home, School, Clinic         | Clinic, School                | Clinic, Lab                | Clinic, Mobile Labs      | School, Clinic              | Home, School          |
-| **Recommended Age Group**      | 5+                           | 7+                            | 8+                         | 6+                       | 5+                          | 6+                    |
-| **Effective Domains**          | Visual attention, inhibition | Motor coordination, attention | Auditory processing        | Visual mapping           | Visual perception           | Cognitive control     |
-| **Therapeutic Use**            | ADHD, Autism                 | ADHD, Autism                  | Speech Delay, ADHD         | ADHD, Visual-motor delay | ADHD, sensory delays        | ADHD, impulse control |
-| **Platform / Technology**      | Pygame (Python)              | OpenCV + MediaPipe            | Python + SpeechRecognition | OpenCV                   | OpenCV + NumPy              | Pygame (Python)       |
-| **APIs / Libraries Used**      | None                         | OpenCV, MediaPipe             | PyAudio, Google Speech API | OpenCV QR module         | OpenCV, NumPy               | None                  |
-| **Input Modality**             | Mouse Click                  | Finger Gesture                | Spoken Word                | QR Card                  | Color Card                  | Keyboard Press        |
-| **Language Support**           | Hindi & English              | Hindi & English               | Hindi & English            | English                  | Hindi & English             | Hindi & English       |
-| **Unique Selling Point (USP)** | Simple UI, no setup          | Real-world motor interaction  | Speech-based interaction   | Physical QR use          | Real-world color flashcards | Fastest input method  |
-| **Game Levels**                | Easy, Medium, Timed          | Easy, Timed                   | Timed, Clarity Mode        | Timed Rounds             | Timed Mode                  | Easy, Timed, Endless  |
-| **Hardware Requirement**       | PC/Laptop                    | Webcam                        | Mic                        | Webcam                   | Webcam                      | PC/Laptop             |
-| **Internet Requirement**       | ❌                            | ❌                             | ✅ (Speech API)             | ❌                        | ❌                           | ❌                     |
-| **Score/Time Capture**         | ✅                            | ✅                             | ✅                          | ✅                        | ✅                           | ✅                     |
-| **Engagement Level**           | Medium                       | High                          | Medium                     | High                     | High                        | Medium                |
-| **Supervision Needed**         | No                           | Optional                      | Sometimes                  | Optional                 | Yes                         | No                    |
-| **Adaptable to Disorders**     | Yes                          | Yes                           | Yes                        | Limited                  | Yes                         | Yes                   |
-| **Localization Scalability**   | Easy                         | Moderate                      | High                       | Moderate                 | High                        | Easy                  |
-| **Development Status**         | Stable                       | Beta                          | Beta                       | Prototype                | Beta                        | Stable                |
-| **Limitations**                | Lacks sensory input          | Light/background sensitivity  | Needs clear audio          | Needs printed QR cards   | Light-sensitive             | Less immersive        |
+> A bilingual, accessible cognitive assessment tool with six unique input modalities. Designed for research, therapy, and adaptive neurodevelopmental testing.
 
 ---
 
+## 🔍 Overview
 
-![image](https://github.com/user-attachments/assets/50174382-03d2-4da4-8d1d-d76e31c05df6)
+This project is a Python-based **Stroop Effect Game** built with **Pygame**, supporting **six input types**:
 
+* 🔁 Mouse Click
+* ⌨️ Keyboard
+* 🎧 Audio/Speech Input
+* ✋ Gesture Recognition (via Webcam)
+* 🔳 QR Code Scanning
+* 🎨 Camera-Based Color Recognition
 
+The game is **bilingual (English + Hindi)**, logs **response time, score, and efficiency**, and is suitable for:
 
-## 🔍 Purpose
-
-These games are built to:
-
-* Provide accessible cognitive testing in **multiple input formats**
-* Compare **Hindi vs English** performance in attention-related tasks
-* Serve as low-cost tools for early **diagnosis and monitoring** of attention and processing issues
-
----
-
-## 🧩 Games Implemented
-
-1. **Click-Based Stroop** – Mouse-based visual selection
-2. **Finger Gesture-Based Stroop** – Gesture detection via camera
-3. **Audio-Based Stroop** – Recognize and respond via spoken words
-4. **QR-Based Stroop** – Show QR codes mapped to colors
-5. **Flashcard-Based Stroop** – Detect plain color cards in real space
-6. **Keyboard-Based Stroop** – Press keys matching the text’s color
+* Cognitive testing
+* Therapy and screening (e.g., ADHD, Autism)
+* Research and education
 
 ---
 
-## 📦 Technical Stack
+## ✨ Features
 
-* Python
-* OpenCV
-* Pygame
-* MediaPipe
-* SpeechRecognition / Google API
+| Feature             | Description                                             |
+| ------------------- | ------------------------------------------------------- |
+| 🎮 Game Modes       | 6 Input Types (Click, Key, Audio, Gesture, QR, Color)   |
+| 🌐 Language Support | English and Hindi using Unicode-compliant fonts         |
+| ⏱️ Timed Response   | Response time and efficiency tracked per question       |
+| 📊 Data Logging     | Score, time, and efficiency logged in CSV + SQLite3     |
+| ♻️ Modular Design   | Each input method is a separate Python module/class     |
+| ⚖️ Clinical Value   | Suitable for ADHD, Dyslexia, Autism, TBI, OCD screening |
+| 🎓 Educational Tool | Helps students and researchers study cognitive control  |
+| ⚙️ Lightweight      | No installation-heavy dependencies, works offline       |
 
 ---
 
+## ⚡ Input Types Explained
 
+### 1. Mouse Click
+
+* Color options shown as buttons
+* Simple and intuitive
+
+### 2. Keyboard Input
+
+* Press mapped key (e.g., 'B' for Blue)
+* Fast and accurate for trained users
+
+### 3. Audio Input
+
+* Uses `speech_recognition` with Google/STT fallback
+* Microphone-based color naming
+
+### 4. Gesture Input
+
+* Uses `mediapipe` to detect finger gestures (1-5 fingers)
+* Touchless, accessible for speech-disabled users
+
+### 5. QR Code Input
+
+* QR codes represent color names
+* Scanned via webcam with `opencv-python`
+
+### 6. Camera Color Input
+
+* User shows real colored object to camera
+* Detected using `numpy` + `opencv`
+
+---
+
+## 🔊 Language Modes
+
+* English: Default, fast rendering
+* Hindi: Unicode with Noto Sans/Mangal fonts
+* Instructions and feedback shown in selected language
+
+---
 
 ## Outputs
 
@@ -82,31 +95,69 @@ https://github.com/user-attachments/assets/38c2c552-2733-4d85-9cce-b7daeffc3d68
 https://github.com/user-attachments/assets/64073bd6-f111-4be3-8425-39c5328a3555
 
 
+---
 
+## 🔗 APIs and Libraries Used
 
-
-## 📈 Clinical Relevance
-
-These games may be used in:
-
-* **ADHD screening**
-* **Cognitive flexibility training**
-* **Visual/auditory attention tasks**
-* **Language comparison studies** (Hindi vs English response time)
-
-
+* `pygame` - UI and event handling
+* `speech_recognition`, `sounddevice`, `pyaudio` - Audio input
+* `opencv-python`, `numpy` - QR and color detection
+* `mediapipe` - Hand gesture recognition
+* `sqlite3`, `csv` - Data persistence
 
 ---
 
-## 👩‍⚕️ Intended Users
+## 🌟 Efficiency Tracking
 
-* Pediatric therapists
-* Clinical psychologists
-* Special educators
-* Neuropsych researchers
+* Each session logs:
 
-
-
-
+  * Score
+  * Total time
+  * Average response time
+  * Calculated efficiency score
+* Stored in `results.csv` and `stroop_data.db`
 
 ---
+
+## 🌚 Use Cases
+
+* Clinical: ADHD, Autism, TBI, Dyslexia screening
+* Educational: Bilingual classroom training, response inhibition demos
+* Research: Cognitive load, multilingual processing, STT reliability
+* Therapy: Executive function development, visual-motor control
+
+---
+
+## 🔄 Version Info
+
+* Fully working prototype
+* 6 working modes
+* Compare option between English/Hindi performance
+* Stable for offline use
+
+---
+
+## ⚡ Future Enhancements
+
+* 💪 Add difficulty levels (speed, distractors)
+* 🤝 Multiplayer / competitive mode for classrooms
+* 🔥 Add EEG/eye-tracking compatibility
+* ♾ Integration with mobile camera (Android/iOS)
+* 🏛 Personalized therapy profiles using DB logs
+
+---
+
+## 📚 Citation & References
+
+1. Stroop, J. R. (1935). Studies of interference in serial verbal reactions. *Journal of Experimental Psychology*
+2. PMC10818498 - Motion-based Stroop ADHD testing using Kinect
+3. PMC8238329 - Stroop interference in Dyslexia using ERP
+4. PubMed19413483 - Gesture and speech integration in Stroop tasks
+
+---
+
+
+## 🙏 Acknowledgements
+
+Developed by **Smriti Aggarwal**
+

@@ -80,7 +80,34 @@ The game is **bilingual (English + Hindi)**, logs **response time, score, and ef
 * Instructions and feedback shown in selected language
 
 ---
+## Tabular Analysis 
 
+| Attribute                    | Click Input                        | Key Input                                 | Audio Input                                               | Gesture Input                                       | QR Code Input                                       | Camera Color Input                                    |
+|-----------------------------|------------------------------------|-------------------------------------------|-----------------------------------------------------------|----------------------------------------------------|------------------------------------------------------|--------------------------------------------------------|
+| Where It Can Be Used        | Labs, clinics, schools, home       | Labs, schools, offline tests              | Speech therapy, home, ADHD testing                        | Clinics, motor control labs, interactive setups    | Visual motor control setups, clinics                | Color recognition tests, visual-cognitive screening    |
+| Recommended Age Group       | 6+                                 | 6+                                        | 8+ (basic speech clarity)                                 | 8+ (gesture-capable)                               | 8+ (camera-aware)                                   | 6+                                                     |
+| Effective Cognitive Domains | Attention, response inhibition     | Executive control, response speed         | Verbal processing, attention                              | Motor coordination, attention                      | Visual scanning, motor coordination                 | Color perception, visual attention                     |
+| Therapeutic Use             | ADHD, executive dysfunction        | Cognitive flexibility, response time      | Speech and language delay screening                       | ADHD, motor planning issues                        | Visual-motor integration                            | Visual processing testing                              |
+| Platform & Technology Used  | Pygame (Mouse)                     | Pygame (Keyboard)                         | Pygame + SpeechRecognition                                 | Pygame + MediaPipe                                 | Pygame + OpenCV + QR libraries                      | Pygame + OpenCV                                        |
+| APIs / Libraries Involved   | pygame                             | pygame                                    | pygame, speech_recognition, pyaudio/sounddevice, threading | pygame, mediapipe, opencv                          | pygame, opencv, pyzbar                              | pygame, opencv, numpy                                  |
+| Input Modality              | Mouse Click                        | Keyboard Press                            | Speech Recognition                                         | Finger Gesture Recognition (1–5)                  | Scanned QR corresponding to color                  | Shows a colored object in front of the camera          |
+| Language Modes Supported    | English & Hindi                    | English & Hindi                           | English & Hindi (via STT)                                 | English & Hindi (instruction only)                | English & Hindi (based on QR code design)           | English & Hindi (instruction only)                     |
+| Unique Selling Point (USP)  | Simple and intuitive UI            | Fastest and most accurate input mode      | Hands-free interaction, STT fallback                       | Touchless interaction, gesture mapping            | Innovative, QR-based low-cost answer method         | No external tools needed, color-based object matching    |
+| Hardware Requirements       | Mouse                              | Keyboard                                  | Microphone (with PyAudio/Sounddevice)                     | Webcam                                             | Webcam                                              | Webcam                                                 |
+| Internet Requirement        | No                                 | No                                        | Optional (for Google STT)                                 | No                                                 | No                                                  | No                                                      |
+| Data Capturing (Score/Time) | Yes (CSV + SQLite)                 | Yes (CSV + SQLite)                        | Yes (CSV + SQLite)                                        | Yes (CSV + SQLite)                                 | Yes (CSV + SQLite)                                  | Yes (CSV + SQLite)                                     |
+| Engagement Level            | High                               | Moderate                                  | High                                                      | Very High                                          | High                                                | Moderate                                                |
+| Supervision Needed          | No                                 | No                                        | Yes (in younger users or noisy environments)              | Maybe (gesture mapping explanation required)       | Maybe (help in showing correct QR codes)            | Maybe (requires holding correct colors)                |
+| Adaptable to Other Disorders| Yes                                | Yes                                       | Yes                                                       | Yes                                                | Yes                                                 | Yes                                                     |
+| Localization / Scalability | Easy to localize                   | Easy                                      | Voice model limited to certain languages                  | Depends on gesture mapping availability            | QR code mapping can be extended                     | Can be scaled with robust color recognition            |
+| Version Status              | Stable                             | Stable                                    | Prototype with fallbacks                                  | Stable                                             | Mostly stable                                       | Stable                                                  |
+| Limitations / Notes         | Mouse accuracy may vary on small screens | Requires understanding of key-color mapping | STT errors, background noise interference          | Lighting and finger clarity issues                | QR not scanning if lighting is poor or image is blurry | Light-dependent accuracy, background color interference |
+
+
+
+
+
+---
 ## Outputs
 
 

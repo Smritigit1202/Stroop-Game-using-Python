@@ -85,11 +85,23 @@ The game is **bilingual (English + Hindi)**, logs **response time, score, and ef
 
 
 
-https://github.com/user-attachments/assets/bbf08270-f194-45ab-823b-9f66a3c2ff78
+https://github.com/user-attachments/assets/9039eb89-99a1-43e5-bc0f-0a551f086cc8
 
 
 
-https://github.com/user-attachments/assets/38c2c552-2733-4d85-9cce-b7daeffc3d68
+
+
+https://github.com/user-attachments/assets/9bb557a7-7a95-4a76-95d0-47b21c537fc7
+
+
+
+https://github.com/user-attachments/assets/847f486e-6deb-4517-9723-b73f282a8037
+
+
+
+
+https://github.com/user-attachments/assets/d7f0e7ca-07ae-4abc-9394-2fcb1d4ba5d7
+
 
 
 https://github.com/user-attachments/assets/64073bd6-f111-4be3-8425-39c5328a3555
